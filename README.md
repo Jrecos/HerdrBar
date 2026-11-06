@@ -26,9 +26,11 @@ The panel groups agents by what they need from you, in this order: blocked, done
 1. Download `HerdrBar-0.1.0.zip` from [Releases](https://github.com/Jrecos/HerdrBar/releases).
 2. Unzip the archive.
 3. Move `HerdrBar.app` to `/Applications`.
-4. Right-click the app and choose **Open** for the first launch.
+4. Open it. The build is ad-hoc signed and not notarized, so macOS blocks the first launch:
+   - **macOS 15 and later:** open **System Settings › Privacy & Security** and click **Open Anyway** next to HerdrBar.
+   - **macOS 14:** right-click the app and choose **Open**.
 
-The build is ad-hoc signed and is not notarized. If macOS blocks the first launch, remove the quarantine attribute, then open the app:
+Or remove the quarantine attribute, then open the app:
 
 ```sh
 xattr -dr com.apple.quarantine /Applications/HerdrBar.app
