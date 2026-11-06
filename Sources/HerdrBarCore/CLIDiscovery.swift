@@ -48,11 +48,4 @@ public struct CLIDiscovery: Sendable {
         var seen = Set<String>()
         return paths.filter { seen.insert($0).inserted }
     }
-
-    /// First candidate whose `--version` banner matches, or `nil` with the probe's reasons.
-    public func locate(_ tool: Tool, version: (String) -> String?) -> String? {
-        candidates(for: tool).first { candidate in
-            version(candidate).map(tool.accepts(version:)) ?? false
-        }
-    }
 }

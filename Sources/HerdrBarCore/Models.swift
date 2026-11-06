@@ -1,14 +1,8 @@
 import Foundation
 
 /// Declaration order is the display order.
-public enum Attention: String, CaseIterable, Codable, Sendable, Comparable {
+public enum Attention: String, CaseIterable, Codable, Sendable {
     case blocked, done, working, idle
-
-    public static func < (lhs: Attention, rhs: Attention) -> Bool {
-        lhs.rank < rhs.rank
-    }
-
-    private var rank: Int { Self.allCases.firstIndex(of: self)! }
 
     public var groupLabel: String {
         self == .working ? "running" : rawValue
@@ -24,7 +18,7 @@ public enum Attention: String, CaseIterable, Codable, Sendable, Comparable {
     }
 }
 
-public struct Agent: Identifiable, Sendable, Codable, Equatable, Hashable {
+public struct Agent: Identifiable, Sendable, Codable, Equatable {
     public let address: String
     public let space: String
     public let machine: String?
@@ -85,8 +79,6 @@ public struct Counts: Sendable, Equatable {
         self.working = working
         self.idle = idle
     }
-
-    public var total: Int { blocked + done + working + idle }
 }
 
 extension Array where Element == Agent {

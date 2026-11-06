@@ -192,12 +192,11 @@ private func liveRunner(failures: [String: CommandFailure] = [:]) -> FakeRunner 
     }
 
     @Test func requiresTheVersionBanner() {
-        let discovery = CLIDiscovery(path: "/a:/b", home: "/h")
-        let banners = ["/a/hc": "hcx 1.0", "/a/herdr-core": "something else", "/b/hc": "hc 0.1.18"]
-        #expect(discovery.locate(.core) { banners[$0] } == "/b/hc")
-        #expect(discovery.locate(.app) { banners[$0] } == nil)
         #expect(Tool.core.accepts(version: "hc 0.2.0\n"))
+        #expect(!Tool.core.accepts(version: "hcx 1.0"))
         #expect(!Tool.core.accepts(version: "herdr-app 0.1.13"))
+        #expect(Tool.app.accepts(version: "herdr-app 0.1.13\n"))
+        #expect(!Tool.app.accepts(version: "hc 0.1.18"))
     }
 }
 
