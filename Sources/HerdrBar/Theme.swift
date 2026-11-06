@@ -17,6 +17,7 @@ enum Phosphor {
     static let teal = Color(hex: 0x6FC8C8)
 
     static let blockedNS = NSColor(red: 0xEF / 255, green: 0x6B / 255, blue: 0x73 / 255, alpha: 1)
+    static let workingNS = NSColor(red: 0xE2 / 255, green: 0xB0 / 255, blue: 0x4A / 255, alpha: 1)
 }
 
 extension Attention {

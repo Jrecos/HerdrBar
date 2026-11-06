@@ -58,18 +58,13 @@ struct PanelView: View {
 
     var body: some View {
         if motion {
-            TimelineView(.periodic(from: .now, by: tickInterval)) { context in
+            // Ages and the clock only need a coarse tick; spinners, pulses and the cursor own their own timelines.
+            TimelineView(.periodic(from: .now, by: 15)) { context in
                 content(at: context.date)
             }
         } else {
             content(at: now)
         }
-    }
-
-    /// 10 fps only while a spinner or pulse is on screen; the cursor blink alone runs at 2 fps.
-    private var tickInterval: TimeInterval {
-        let counts = snapshot.agents.counts
-        return counts.working > 0 || counts.blocked > 0 ? 0.1 : 0.5
     }
 
     private func content(at date: Date) -> some View {
@@ -94,9 +89,9 @@ struct PanelView: View {
             Text("~/agents").foregroundStyle(Phosphor.teal)
             Text("$ watch").fontWeight(.bold)
             Text("· \(snapshot.agents.count) procs").foregroundStyle(Phosphor.muted)
-            Text("▌")
-                .foregroundStyle(Phosphor.done)
-                .opacity(!motion || Int(date.timeIntervalSinceReferenceDate * 2) % 2 == 0 ? 1 : 0)
+            Blink(motion: motion) {
+                Text("▌").foregroundStyle(Phosphor.done)
+            }
             Spacer()
             Text("◷ \(date.formatted(date: .omitted, time: .shortened))")
                 .font(Mono.font(11))
@@ -132,8 +127,8 @@ struct PanelView: View {
                         .font(Mono.font(11, weight: .semibold))
                         .foregroundStyle(group.attention.color)
                         .padding(.horizontal, 10)
+                        .padding(.bottom, 3)
                         .frame(height: Layout.groupHeader, alignment: .bottomLeading)
-                        .padding(.bottom, 2)
                     ForEach(group.agents) { agent in
                         AgentRow(
                             agent: agent,
@@ -215,17 +210,6 @@ private struct AgentRow: View {
     @State private var appeared = false
     @State private var flash = false
 
-    private var tag: String {
-        guard agent.attention == .working, motion else { return agent.attention.tag }
-        let frame = Int(date.timeIntervalSinceReferenceDate * 10) % spinnerFrames.count
-        return "[\(spinnerFrames[frame])]"
-    }
-
-    private var tagOpacity: Double {
-        guard agent.attention == .blocked, motion else { return 1 }
-        return 0.65 + 0.35 * cos(date.timeIntervalSinceReferenceDate * 2.4)
-    }
-
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 1) {
@@ -239,9 +223,7 @@ private struct AgentRow: View {
                         Text("@\(machine)").font(Mono.font(11)).foregroundStyle(Phosphor.teal)
                     }
                     Text(agent.age(at: date)).font(Mono.font(11)).foregroundStyle(Phosphor.dim)
-                    Text(tag)
-                        .foregroundStyle(agent.attention.color)
-                        .opacity(tagOpacity)
+                    AttentionTag(attention: agent.attention, motion: motion)
                         .frame(width: 36, alignment: .trailing)
                 }
                 HStack(spacing: 0) {
@@ -299,5 +281,48 @@ private struct Scanlines: View {
 
     var body: some View {
         Rectangle().fill(ImagePaint(image: Self.tile)).allowsHitTesting(false)
+    }
+}
+
+/// Each animated glyph owns its clock, so a tick re-renders one `Text` instead of the whole panel.
+private struct AttentionTag: View {
+    let attention: Attention
+    let motion: Bool
+    @State private var pulsing = false
+
+    var body: some View {
+        switch attention {
+        case .working where motion:
+            HStack(spacing: 0) {
+                Text("[")
+                SpinnerGlyph(color: Phosphor.workingNS, font: Mono.nsFont(12))
+                Text("]")
+            }
+            .foregroundStyle(attention.color)
+        case .blocked where motion:
+            Text(attention.tag)
+                .foregroundStyle(attention.color)
+                .opacity(pulsing ? 0.55 : 1)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) { pulsing = true }
+                }
+        default:
+            Text(attention.tag).foregroundStyle(attention.color)
+        }
+    }
+}
+
+private struct Blink<Content: View>: View {
+    let motion: Bool
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        if motion {
+            TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                content().opacity(Int(context.date.timeIntervalSinceReferenceDate * 2) % 2 == 0 ? 1 : 0)
+            }
+        } else {
+            content()
+        }
     }
 }
