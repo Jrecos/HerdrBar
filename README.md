@@ -1,8 +1,14 @@
 # HerdrBar
 
-A macOS menu bar app for [Herdr](https://herdr.dev) agents. It shows the agents Herdr is running, local or on a remote machine, in a panel styled like Herdr's `~/agents $ watch` sidebar. Click an agent and Herdr opens that session.
+A macOS menu bar companion that shows which [Herdr](https://herdr.dev) agents need your attention.
+
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)
+![Swift 6](https://img.shields.io/badge/Swift-6-orange)
+![MIT license](https://img.shields.io/badge/license-MIT-green)
 
 ![Agents in every state](docs/screenshots/mixed.png)
+
+## What it shows
 
 The menu bar item shows a braille spinner while agents work, `!N` with a pulsing alert glyph when any agent is blocked, and `✓N` when agents finished while you weren't looking. When Herdr isn't running the glyph dims.
 
@@ -17,17 +23,30 @@ The panel groups agents by what they need from you, in this order: blocked, done
 
 ## Install
 
-Build from source. There is no binary release yet.
+1. Download `HerdrBar-0.1.0.zip` from [Releases](https://github.com/Jrecos/HerdrBar/releases).
+2. Unzip the archive.
+3. Move `HerdrBar.app` to `/Applications`.
+4. Right-click the app and choose **Open** for the first launch.
+
+The build is ad-hoc signed and is not notarized. If macOS blocks the first launch, remove the quarantine attribute, then open the app:
 
 ```sh
-git clone https://github.com/jrecos/HerdrBar.git
-cd HerdrBar
-./Scripts/package_app.sh
-mv HerdrBar.app /Applications/
+xattr -dr com.apple.quarantine /Applications/HerdrBar.app
 open /Applications/HerdrBar.app
 ```
 
-The script signs the app ad hoc. Set `APP_IDENTITY="Developer ID Application: ..."` to sign with your own certificate.
+## Build from source
+
+Use macOS 14 or later with a Swift 6 toolchain.
+
+```sh
+git clone https://github.com/Jrecos/HerdrBar.git
+cd HerdrBar
+./Scripts/package_app.sh release
+open HerdrBar.app
+```
+
+The script signs the app ad hoc. Set `APP_IDENTITY` to your Developer ID Application identity to sign with your certificate.
 
 Right-click the menu bar item for "Launch at Login", "Open Herdr" and "Quit HerdrBar".
 
@@ -43,7 +62,7 @@ With the panel open:
 
 Clicking outside the panel also closes it.
 
-## How it reads Herdr
+## How it works
 
 HerdrBar runs Herdr's own CLIs. Every call is read-only except the one that focuses an agent.
 
@@ -70,6 +89,8 @@ defaults write io.github.jrecos.herdrbar herdrAppPath /path/to/herdr-app
 
 HerdrBar is local only. It makes no network calls, collects no telemetry, and stores nothing except the two optional CLI paths above in its own defaults domain.
 
+The README screenshots use invented names, tasks, machines, and IDs from `docs/fixtures`. They are rendered with `--snapshot`, not captured from live sessions.
+
 ## Development
 
 ```sh
@@ -79,14 +100,23 @@ swift test
 ./Scripts/compile_and_run.sh --test
 ```
 
-The package has two targets. `HerdrBarCore` holds the models, the CLI client and its JSON parsing, the attention rules and the formatting, with no AppKit dependency. `HerdrBar` is the app: status item, panel, animations and the right-click menu. `Tests/HerdrBarCoreTests` runs the core against JSON fixtures modelled on real CLI output.
+`HerdrBarCore` holds the models, CLI client, JSON parsing, attention rules, and formatting without AppKit. `HerdrBar` owns the status item, panel, animations, and right-click menu. Core tests use invented JSON fixtures in the CLI output format.
 
-To render the panel without a screen, which is how the screenshots above were made:
+To regenerate the README screenshots from fixtures:
 
 ```sh
-HerdrBar.app/Contents/MacOS/HerdrBar --snapshot out.png --fixture docs/fixtures/mixed.json
-HerdrBar.app/Contents/MacOS/HerdrBar --snapshot out.png     # live data
+HerdrBar.app/Contents/MacOS/HerdrBar --snapshot docs/screenshots/mixed.png --fixture docs/fixtures/mixed.json
+HerdrBar.app/Contents/MacOS/HerdrBar --snapshot docs/screenshots/empty.png --fixture docs/fixtures/empty.json
 ```
+
+To rebuild the icon and create the release archive:
+
+```sh
+./Scripts/build_icon.sh
+./Scripts/release_zip.sh
+```
+
+`version.env` supplies the app and archive version. The archive script builds release mode and writes `dist/HerdrBar-<version>.zip` and its `.zip.sha256` checksum.
 
 The panel uses "JetBrainsMono Nerd Font" (or "JetBrainsMonoNL Nerd Font") when it is installed, otherwise the system monospace font.
 
