@@ -1,0 +1,52 @@
+{
+  "agents": [
+    {
+      "address": "t4",
+      "space": "api-server",
+      "machine": null,
+      "task": "DEPLOY: Approval needed before restarting the gateway",
+      "attention": "blocked",
+      "age_minutes": 10
+    },
+    {
+      "address": "dev/t7",
+      "space": "web-app",
+      "machine": "dev",
+      "task": "AUTH: Session routing verified on the real machine",
+      "attention": "done",
+      "age_minutes": 17
+    },
+    {
+      "address": "buildbox/t7",
+      "space": "billing-service",
+      "machine": "buildbox",
+      "task": "REFACTOR: Split the payments module",
+      "attention": "working",
+      "age_minutes": 34
+    },
+    {
+      "address": "t12",
+      "space": "api-server",
+      "machine": null,
+      "task": "DOCS: Write the install guide",
+      "attention": "working",
+      "age_minutes": 3
+    },
+    {
+      "address": "gpu-box/t3",
+      "space": "data-pipelines",
+      "machine": "gpu-box",
+      "task": "Ready for the next task",
+      "attention": "idle",
+      "age_minutes": 95
+    },
+    {
+      "address": "t2",
+      "space": "notes",
+      "machine": null,
+      "task": "Untitled agent",
+      "attention": "idle",
+      "age_minutes": 1500
+    }
+  ]
+}

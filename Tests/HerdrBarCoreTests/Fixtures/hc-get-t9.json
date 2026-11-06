@@ -1,0 +1,18 @@
+{
+ "address": "t9",
+ "parent": "t4",
+ "state": "live",
+ "status": {
+  "app": "omp",
+  "state": "working"
+ },
+ "turn": 2,
+ "labels": {
+  "herdr.seen": "0",
+  "herdr.space": "spAPI",
+  "herdr.tab": "tb1"
+ },
+ "title": "\u03c0 \u280b \ue0b0 SUB: child work",
+ "status_ms": 1793981404969,
+ "name": null
+}

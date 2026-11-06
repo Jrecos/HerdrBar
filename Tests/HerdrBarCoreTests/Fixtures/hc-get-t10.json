@@ -1,0 +1,18 @@
+{
+ "address": "t10",
+ "parent": null,
+ "state": "live",
+ "status": {
+  "app": "omp",
+  "state": "error"
+ },
+ "turn": 5,
+ "labels": {
+  "herdr.seen": "5",
+  "herdr.space": "spAPI",
+  "herdr.tab": "tb1"
+ },
+ "title": "\u03c0 \u2717 DEPLOY: Approval needed before restarting the gateway",
+ "status_ms": 1793981404969,
+ "name": null
+}

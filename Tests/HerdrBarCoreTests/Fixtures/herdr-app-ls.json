@@ -1,0 +1,14 @@
+{
+ "spaces": [
+  {
+   "id": "spAPI",
+   "name": "api-server",
+   "machine": null
+  },
+  {
+   "id": "dev/spWEB",
+   "name": "web-app",
+   "machine": "dev"
+  }
+ ]
+}

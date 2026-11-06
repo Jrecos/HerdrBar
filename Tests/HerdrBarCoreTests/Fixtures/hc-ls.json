@@ -1,0 +1,58 @@
+{
+ "hidden_finished": 1,
+ "machines": [
+  {
+   "name": "dev",
+   "state": "connected"
+  }
+ ],
+ "terminals": [
+  {
+   "address": "t4",
+   "agent": "omp",
+   "state": "live",
+   "status": "working",
+   "turn": 31,
+   "where": "api-server / 1"
+  },
+  {
+   "address": "dev/t6",
+   "agent": "bash",
+   "state": "live",
+   "turn": 9,
+   "where": "web-app / 1"
+  },
+  {
+   "address": "dev/t7",
+   "agent": "omp",
+   "state": "live",
+   "status": "idle",
+   "turn": 21,
+   "where": "web-app / 1"
+  },
+  {
+   "address": "t9",
+   "agent": "omp",
+   "state": "live",
+   "status": "working",
+   "turn": 2,
+   "where": "api-server / 1"
+  },
+  {
+   "address": "t10",
+   "agent": "omp",
+   "state": "live",
+   "status": "error",
+   "turn": 5,
+   "where": "api-server / 1"
+  },
+  {
+   "address": "t11",
+   "agent": "omp",
+   "state": "live",
+   "status": "done",
+   "turn": 5,
+   "where": "api-server / 1"
+  }
+ ]
+}
