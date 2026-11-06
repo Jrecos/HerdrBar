@@ -24,8 +24,6 @@ func renderSnapshot(to output: String, fixture: String?) async throws {
     let now = Date(timeIntervalSince1970: 1_793_980_800)
     let snapshot: Snapshot
     if let fixture {
-        // Fixture renders are published; a local clock would leak the renderer's time zone.
-        NSTimeZone.default = TimeZone(identifier: "UTC")!
         snapshot = .loaded(try Fixture.load(URL(fileURLWithPath: fixture), now: now))
     } else {
         snapshot = await AgentStore.live().clientSnapshot()
