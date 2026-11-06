@@ -12,6 +12,14 @@ public enum Tool: String, Sendable, CaseIterable {
         }
     }
 
+    /// UserDefaults key for an explicit path, in the app's own domain.
+    public var settingKey: String {
+        switch self {
+        case .core: "hcPath"
+        case .app: "herdrAppPath"
+        }
+    }
+
     /// Herdr.app verifies the core by its version banner, so we do the same.
     public func accepts(version: String) -> Bool {
         switch self {

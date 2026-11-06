@@ -84,12 +84,3 @@ final class AgentStore {
         }
     }
 }
-
-extension Tool {
-    var settingKey: String {
-        switch self {
-        case .core: "hcPath"
-        case .app: "herdrAppPath"
-        }
-    }
-}

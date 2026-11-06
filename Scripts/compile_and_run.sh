@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dev loop: quit running copies, build, package, relaunch, and confirm the app stays up.
+# Dev loop: quit running copies, build, package, relaunch, and confirm the app started.
 # --test runs swift test first. --debug packages the debug configuration.
 set -euo pipefail
 

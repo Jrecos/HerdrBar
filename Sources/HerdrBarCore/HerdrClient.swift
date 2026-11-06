@@ -34,7 +34,7 @@ public struct HerdrClient: Sendable {
                 return candidate
             }
         }
-        throw CommandFailure(command: tool.names[0], reason: "not found; install Herdr.app and its CLI, or set the path in Settings")
+        throw CommandFailure(command: tool.names[0], reason: "not found; install Herdr.app and its CLI, or defaults write io.github.jrecos.herdrbar \(tool.settingKey) <path>")
     }
 
     public func snapshot() async -> Snapshot {

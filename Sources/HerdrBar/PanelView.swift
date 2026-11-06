@@ -251,7 +251,7 @@ private struct AgentRow: View {
         .accessibilityIdentifier(agent.address)
         .accessibilityLabel("\(agent.space)\(agent.machine.map { " on \($0)" } ?? ""), \(agent.attention.groupLabel), \(agent.task)")
         .onHover(perform: hover)
-        .animation(.easeOut(duration: 0.12), value: highlighted)
+        .animation(motion ? .easeOut(duration: 0.12) : nil, value: highlighted)
         .opacity(!motion || appeared ? 1 : 0)
         .offset(y: !motion || appeared ? 0 : 6)
         .onAppear {

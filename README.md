@@ -1,6 +1,6 @@
 # HerdrBar
 
-A macOS menu bar app for [Herdr](https://herdr.dev) agents. It shows every agent Herdr knows about, local or on a remote machine, in a panel styled like Herdr's `~/agents $ watch` sidebar. Click an agent and Herdr opens that session.
+A macOS menu bar app for [Herdr](https://herdr.dev) agents. It shows the agents Herdr is running, local or on a remote machine, in a panel styled like Herdr's `~/agents $ watch` sidebar. Click an agent and Herdr opens that session.
 
 ![Agents in every state](docs/screenshots/mixed.png)
 
@@ -29,7 +29,7 @@ open /Applications/HerdrBar.app
 
 The script signs the app ad hoc. Set `APP_IDENTITY="Developer ID Application: ..."` to sign with your own certificate.
 
-Right-click the menu bar item for "Launch at Login", "Open Herdr" and "Quit".
+Right-click the menu bar item for "Launch at Login", "Open Herdr" and "Quit HerdrBar".
 
 ## Keys
 
@@ -52,6 +52,7 @@ HerdrBar runs Herdr's own CLIs. Every call is read-only except the one that focu
 | `hc ls --json` | The terminals Herdr core knows about |
 | `hc get --json <address>` | One terminal's state, turn, labels and title |
 | `herdr-app ls` | Space names |
+| `hc --version`, `herdr-app --version` | Confirms a candidate binary before each refresh |
 | `herdr-app do agent.focus '{"terminal":"<address>"}'` | Open the agent you clicked (after activating Herdr.app) |
 
 It refreshes every 5 seconds, or every 2 seconds while the panel is open. Each call runs off the main thread with a 3 second timeout.
@@ -78,7 +79,7 @@ swift test
 ./Scripts/compile_and_run.sh --test
 ```
 
-The package has two targets. `HerdrBarCore` holds the models, the CLI client and its JSON parsing, the attention rules and the formatting, with no AppKit dependency. `HerdrBar` is the app: status item, panel, animations and settings. `Tests/HerdrBarCoreTests` runs the core against JSON fixtures of real CLI output.
+The package has two targets. `HerdrBarCore` holds the models, the CLI client and its JSON parsing, the attention rules and the formatting, with no AppKit dependency. `HerdrBar` is the app: status item, panel, animations and the right-click menu. `Tests/HerdrBarCoreTests` runs the core against JSON fixtures modelled on real CLI output.
 
 To render the panel without a screen, which is how the screenshots above were made:
 
@@ -87,7 +88,7 @@ HerdrBar.app/Contents/MacOS/HerdrBar --snapshot out.png --fixture docs/fixtures/
 HerdrBar.app/Contents/MacOS/HerdrBar --snapshot out.png     # live data
 ```
 
-The panel uses "JetBrainsMono Nerd Font" when it is installed, otherwise the system monospace font.
+The panel uses "JetBrainsMono Nerd Font" (or "JetBrainsMonoNL Nerd Font") when it is installed, otherwise the system monospace font.
 
 See [AGENTS.md](AGENTS.md) for the layout and conventions.
 
