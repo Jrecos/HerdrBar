@@ -66,6 +66,11 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
         #expect(TaskTitle.clean("42 things") == "42 things")
     }
 
+    @Test(arguments: [".env migration", "/etc/hosts", "[AUTH] investigate", "#123 fix", "$HOME setup", "+1 support", "_config"])
+    func preservesLeadingPunctuation(_ title: String) {
+        #expect(TaskTitle.clean(title) == title)
+    }
+
     @Test func emptyBecomesUntitled() {
         #expect(TaskTitle.clean(nil) == "Untitled agent")
         #expect(TaskTitle.clean("   ") == "Untitled agent")
