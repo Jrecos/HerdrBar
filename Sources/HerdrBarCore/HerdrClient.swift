@@ -52,29 +52,24 @@ public struct HerdrClient: Sendable {
         let app = try await locate(.app)
         let decoder = JSONDecoder()
         let listing = try decoder.decode(SpaceListing.self, from: try await runner.run(app, ["ls"]))
-        let inventory = listing.inventory
-        var addresses = Set(inventory.map(\.address))
-        for entry in inventory {
-            addresses.formUnion(entry.subAgents ?? [])
-        }
-        let details = await withTaskGroup(of: TerminalDetail?.self) { group in
-            if let core {
-                for address in addresses {
-                    group.addTask {
-                        guard let data = try? await runner.run(core, ["get", "--json", address]),
-                              let detail = try? JSONDecoder().decode(TerminalDetail.self, from: data),
-                              detail.address == address else { return nil }
-                        return detail
+        return await withTaskGroup(of: Agent?.self) { group in
+            for entry in listing.inventory {
+                group.addTask {
+                    let detail: TerminalDetail?
+                    if let core, let data = try? await runner.run(core, ["get", "--json", entry.address]) {
+                        detail = try? JSONDecoder().decode(TerminalDetail.self, from: data)
+                    } else {
+                        detail = nil
                     }
+                    return entry.agent(detail: detail)
                 }
             }
-            var details: [String: TerminalDetail] = [:]
-            for await detail in group {
-                if let detail { details[detail.address] = detail }
+            var agents: [Agent] = []
+            for await agent in group {
+                if let agent { agents.append(agent) }
             }
-            return details
+            return agents
         }
-        return inventory.map { $0.agent(details: details) }
     }
 
     /// What Herdr's own notification click does: raise the app, then focus the agent's terminal.

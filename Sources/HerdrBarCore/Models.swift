@@ -26,18 +26,16 @@ public struct Agent: Identifiable, Sendable, Codable, Equatable {
     public let task: String
     public let attention: Attention
     public let since: Date?
-    public let runningSubagentCount: Int?
 
     public var id: String { address }
 
-    public init(address: String, space: String, machine: String?, task: String, attention: Attention, since: Date?, runningSubagentCount: Int?) {
+    public init(address: String, space: String, machine: String?, task: String, attention: Attention, since: Date?) {
         self.address = address
         self.space = space
         self.machine = machine
         self.task = task
         self.attention = attention
         self.since = since
-        self.runningSubagentCount = runningSubagentCount
     }
 
     public func age(at now: Date) -> String {

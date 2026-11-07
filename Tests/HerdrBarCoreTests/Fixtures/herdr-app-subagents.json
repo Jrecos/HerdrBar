@@ -1,9 +1,0 @@
-{
-  "spaces": [{"id": "s", "name": "helpers", "tabs": [{"terminals": [
-    {"terminal": "t1", "status": "idle", "sub_agents": ["t7", "dev/t7", "t8", "t9", "t10", "t11", "t7"]},
-    {"terminal": "t2", "status": "done", "sub_agents": ["t7"]},
-    {"terminal": "t7", "status": "working", "sub_agents": []},
-    {"terminal": "dev/t1", "status": "blocked", "sub_agents": ["t7"]},
-    {"terminal": "t3", "status": "working", "sub_agents": []}
-  ]}]}]
-}

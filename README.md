@@ -20,8 +20,6 @@ The menu bar item shows a braille spinner while agents work, `!N` with a pulsing
 
 The panel groups agents by what they need from you, in this order: blocked, done, running, idle, and unknown. Each row shows the space, the machine for remote agents, its current task, and the state age when supported by core details. Idle and done ages are unavailable because core cannot establish when Herdr's displayed attention changed. When details are unavailable, the row keeps the status from Herdr and explicitly shows that the task and age are unavailable. Rows slide in when the panel opens and flash when an agent changes state. The panel respects the system "Reduce motion" setting.
 
-The current source adds a compact `↳N` on the task line for Herdr-reported working subagents. Known zero counts are hidden. `↳?` means the count is unavailable, not zero. The tooltip and accessibility label include the count even when it is zero. This behavior is not in the v0.1.1 download.
-
 ![HerdrBar panel when no agents are available](docs/screenshots/empty.png)
 
 ## Requirements
@@ -75,24 +73,20 @@ Clicking outside the panel also closes it.
 
 ## How it works
 
-This section describes the current source. The v0.1.1 download predates subagent counts and the subprocess timeout fixes listed under [Unreleased](CHANGELOG.md#unreleased).
+This section describes the current source. The v0.1.1 download predates the subprocess timeout fixes listed under [Unreleased](CHANGELOG.md#unreleased).
 
 HerdrBar runs Herdr's own CLIs. Listing and detail requests query Herdr, though core may persist registry state while serving them; focusing an agent changes Herdr's selection.
 
 | Command | Purpose |
 | --- | --- |
-| `herdr-app ls` | Authoritative space, terminal, attention, and direct child membership inventory |
-| `hc get --json <address>` | Supplies titles, status times, in-process status records, and direct child states |
-| `hc --version`, `herdr-app --version` | Confirms a candidate binary before each refresh; `hc` is optional, but counts are unavailable without it |
+| `herdr-app ls` | Authoritative space, terminal and attention inventory |
+| `hc get --json <address>` | Enriches a terminal with its title and status time when available |
+| `hc --version`, `herdr-app --version` | Confirms a candidate binary before each refresh; `hc` is optional for detail enrichment |
 | `herdr-app do agent.focus '{"terminal":"<address>"}'` | Open the agent you clicked (after activating Herdr.app) |
 
 It refreshes every 5 seconds, or every 2 seconds while the panel is open. Each call runs off the main thread with a 3 second timeout. Timeout and cancellation send `SIGKILL` to the command's process group, close its output pipes, and return without waiting for process exit.
 
 An agent is a terminal whose program reports a status. HerdrBar shows the terminals Herdr.app lists, including child terminals when listed. Attention comes from Herdr.app's listing, including its seen/unseen decision; an `error` status shows as blocked. If a detail request fails, the terminal remains visible with its listed attention and unavailable task and age. Unrecognized statuses appear as unknown.
-
-Each refresh fetches core details once per unique full address across listed sessions and their direct children. Counts combine working in-process Herdr status records with live direct children that report `working`. Record IDs are opaque, so every working record counts, including IDs with slashes. Idle, done, blocked, error, and finished helpers do not count. HerdrBar does not inspect a child's own records or traverse its children. A session's own attention does not gate its helpers.
-
-Missing child membership, unreadable details, or unrecognized helper states make the count unavailable rather than a partial total. Missing in-process records mean none are reported. A child without a reported status contributes zero. These are Herdr-reported counts, not universal process counts. Helpers that do not report through Herdr are not included.
 
 GUI apps don't inherit your shell `PATH`, so HerdrBar looks for the CLIs in this order: the paths in its own settings, `PATH`, then `~/.local/bin`, `/opt/homebrew/bin` and `/usr/local/bin`. A candidate for `hc` must answer `--version` with a line starting `hc `. To point HerdrBar at a CLI somewhere else:
 
