@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Bound CLI execution on timeout and cancellation, including commands that ignore termination or leave output pipes open.
+- Keep the panel clock and agent ages current when Reduce Motion is enabled.
+- Preserve meaningful leading punctuation in task titles.
+- Use the public account handle for copyright attribution and include the full MIT license in packaged apps.
+
 ## 0.1.1 (2026-11-06)
 
 - Use Herdr.app's inventory so agents remain visible when core omits a remote machine; retain listed status when terminal details fail.

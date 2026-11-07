@@ -2,9 +2,9 @@
 
 ## Layout
 
-- `Sources/HerdrBarCore`: models (`Attention`, `Agent`, `Snapshot`), `HerdrClient` and the `hc` / `herdr-app` JSON parsing, CLI discovery, grouping, ages, `StatusBadge`, `Fixture`. Pure Swift, no AppKit. Everything except `ProcessRunner` has tests.
+- `Sources/HerdrBarCore`: models (`Attention`, `Agent`, `Snapshot`), `HerdrClient` and the `hc` / `herdr-app` JSON parsing, CLI discovery, grouping, ages, `StatusBadge`, `Fixture`, and `ProcessRunner` for subprocess lifetime. Pure Swift, no AppKit.
 - `Sources/HerdrBar`: the app. `AgentStore` (refresh loop, `@Observable`), `StatusItemController` plus `BadgeImages` (menu bar), `PanelController` (NSPanel, keys, positioning), `PanelView` (SwiftUI), `SpinnerGlyph`, `Theme`, `main.swift` (snapshot mode and launch).
-- `Tests/HerdrBarCoreTests`: Swift Testing suites over `Fixtures/*.json`, modelled on real CLI output.
+- `Tests/HerdrBarCoreTests`: Swift Testing suites over `Fixtures/*.json`, modelled on real CLI output, plus real-subprocess timeout, cancellation, and pipe-draining tests.
 - `docs/fixtures`: agent fixtures for `--snapshot`. `docs/screenshots`: panels rendered with `--snapshot`; the README embeds `mixed.png` and `empty.png`.
 - `Scripts/package_app.sh` builds `HerdrBar.app`. `Scripts/compile_and_run.sh` is the dev loop.
 

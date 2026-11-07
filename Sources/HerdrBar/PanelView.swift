@@ -57,7 +57,7 @@ struct PanelView: View {
     private var focusFailure: String? { store.focusFailure }
 
     var body: some View {
-        if motion {
+        if animate {
             // Ages and the clock only need a coarse tick; spinners, pulses and the cursor own their own timelines.
             TimelineView(.periodic(from: .now, by: 15)) { context in
                 content(at: context.date)

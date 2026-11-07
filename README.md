@@ -75,7 +75,7 @@ HerdrBar runs Herdr's own CLIs. Listing and detail requests query Herdr, though 
 | `hc --version`, `herdr-app --version` | Confirms a candidate binary before each refresh; `hc` is optional for detail enrichment |
 | `herdr-app do agent.focus '{"terminal":"<address>"}'` | Open the agent you clicked (after activating Herdr.app) |
 
-It refreshes every 5 seconds, or every 2 seconds while the panel is open. Each call runs off the main thread with a 3 second timeout.
+It refreshes every 5 seconds, or every 2 seconds while the panel is open. Each call runs off the main thread with a 3 second timeout. Timeout and cancellation send `SIGKILL` to the command's process group, close its output pipes, and return without waiting for process exit.
 
 An agent is a terminal whose program reports a status. Sub-agents started with `hc run` are left out; Herdr shows them under their parent. Attention comes from Herdr.app's listing, including its seen/unseen decision; an `error` status shows as blocked. If a detail request fails, the terminal remains visible with its listed attention and unavailable task and age. Unrecognized statuses appear as unknown.
 
@@ -91,6 +91,10 @@ defaults write io.github.jrecos.herdrbar herdrAppPath /path/to/herdr-app
 HerdrBar is local only. It makes no network calls, collects no telemetry, and stores nothing except the two optional CLI paths above in its own defaults domain.
 
 The README screenshots use invented names, tasks, machines, and IDs from `docs/fixtures`. They are rendered with `--snapshot`, not captured from live sessions.
+
+The live panel shows your space names, machine names, and task titles. Running `--snapshot` without `--fixture` exports that live information to an image. Use an invented fixture for screenshots you plan to share.
+
+The app credits the public GitHub handle `Jrecos` and includes the full MIT license in `HerdrBar.app/Contents/Resources/LICENSE`.
 
 ## Development
 
