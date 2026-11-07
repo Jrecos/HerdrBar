@@ -210,6 +210,13 @@ private struct AgentRow: View {
     @State private var appeared = false
     @State private var flash = false
 
+    private var subagentSummary: String {
+        if let count = agent.runningSubagentCount {
+            return "\(count) Herdr-reported working \(count == 1 ? "subagent" : "subagents")"
+        }
+        return "Herdr-reported working subagent count unavailable"
+    }
+
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 1) {
@@ -229,6 +236,14 @@ private struct AgentRow: View {
                 HStack(spacing: 0) {
                     Text("└─ ").foregroundStyle(Phosphor.dim)
                     Text(agent.task).foregroundStyle(Phosphor.muted).lineLimit(1).truncationMode(.tail)
+                    Spacer(minLength: 8)
+                    if agent.runningSubagentCount != 0 {
+                        Text(agent.runningSubagentCount.map { "↳\($0)" } ?? "↳?")
+                            .foregroundStyle(agent.runningSubagentCount == nil ? Phosphor.dim : Phosphor.teal)
+                            .fixedSize()
+                            .help(subagentSummary)
+                            .accessibilityLabel(subagentSummary)
+                    }
                 }
                 .font(Mono.font(10.5))
                 .padding(.leading, 18)
@@ -247,10 +262,10 @@ private struct AgentRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(agent.task)
         .accessibilityIdentifier(agent.address)
-        .accessibilityLabel("\(agent.space)\(agent.machine.map { " on \($0)" } ?? ""), \(agent.attention.groupLabel), \(agent.task)")
+        .help("\(agent.task)\n\(subagentSummary)")
         .onHover(perform: hover)
+        .accessibilityLabel("\(agent.space)\(agent.machine.map { " on \($0)" } ?? ""), \(agent.attention.groupLabel), \(agent.task), \(subagentSummary)")
         .animation(motion ? .easeOut(duration: 0.12) : nil, value: highlighted)
         .opacity(!motion || appeared ? 1 : 0)
         .offset(y: !motion || appeared ? 0 : 6)

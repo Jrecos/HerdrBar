@@ -3,7 +3,7 @@
     {
       "id": "spAPI", "name": "api-server", "machine": null,
       "tabs": [{"terminals": [
-        {"terminal": "t4", "status": "working", "sub_agents": [{"terminal": "t9", "status": "working"}]},
+        {"terminal": "t4", "status": "working", "sub_agents": ["t9"]},
         {"terminal": "t10", "status": "error"},
         {"terminal": "t11", "status": "done"}
       ]}]
@@ -12,7 +12,7 @@
       "id": "dev/spWEB", "name": "web-app", "machine": "dev",
       "tabs": [{"terminals": [
         {"terminal": "dev/t6", "status": null},
-        {"terminal": "dev/t7", "status": "idle", "sub_agents": [{"terminal": "dev/t99", "status": "working"}]}
+        {"terminal": "dev/t7", "status": "idle", "sub_agents": ["dev/t99"]}
       ]}]
     }
   ]

@@ -87,14 +87,14 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
         let listing = try! JSONDecoder().decode(SpaceListing.self, from: fixture("herdr-app-ls"))
         let entries = listing.inventory
         #expect(Set(entries.map(\.address)) == ["t4", "t10", "t11", "dev/t7"])
-        let local = entries.first { $0.address == "t4" }!.agent(detail: detail("hc-get-t4"))!
-        let remote = entries.first { $0.address == "dev/t7" }!.agent(detail: detail("hc-get-dev-t7"))!
+        let local = entries.first { $0.address == "t4" }!.agent(details: ["t4": detail("hc-get-t4")])
+        let remote = entries.first { $0.address == "dev/t7" }!.agent(details: ["dev/t7": detail("hc-get-dev-t7")])
         #expect(local.space == "api-server" && local.machine == nil && local.attention == .working)
         #expect(local.since == Date(timeIntervalSince1970: 1_793_981_404.969))
         #expect(remote.space == "web-app" && remote.machine == "dev" && remote.attention == .idle)
         #expect(remote.since == nil)
-        #expect(entries.first { $0.address == "t10" }!.agent(detail: detail("hc-get-t10"))?.attention == .blocked)
-        let done = entries.first { $0.address == "t11" }!.agent(detail: detail("hc-get-t11"))!
+        #expect(entries.first { $0.address == "t10" }!.agent(details: ["t10": detail("hc-get-t10")]).attention == .blocked)
+        let done = entries.first { $0.address == "t11" }!.agent(details: ["t11": detail("hc-get-t11")])
         #expect(done.attention == .done && done.since == nil)
     }
 
@@ -102,16 +102,16 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
         let data = Data(#"{"spaces":[{"id":"s","name":"space","tabs":[{"terminals":[{"terminal":"t9","status":"working"}]}]}]}"#.utf8)
         let entry = try! JSONDecoder().decode(SpaceListing.self, from: data).inventory[0]
         let childDetail = detail("hc-get-t9")
-        #expect(entry.agent(detail: childDetail)?.address == "t9")
+        #expect(entry.agent(details: ["t9": childDetail]).address == "t9")
         let dead = Data(#"{"address":"t9","parent":null,"state":"dead","status":{"state":"working"},"title":"Stopped","status_ms":1000}"#.utf8)
         let deadDetail = try! JSONDecoder().decode(TerminalDetail.self, from: dead)
-        #expect(entry.agent(detail: deadDetail)?.task == "Stopped")
+        #expect(entry.agent(details: ["t9": deadDetail]).task == "Stopped")
     }
 
     @Test func unknownStatusRemainsVisibleWithoutInventingAge() {
         let data = Data(#"{"spaces":[{"id":"s","name":"space","tabs":[{"terminals":[{"terminal":"t4","status":"future"}]}]}]}"#.utf8)
         let entry = try! JSONDecoder().decode(SpaceListing.self, from: data).inventory[0]
-        let agent = entry.agent(detail: detail("hc-get-t4"))!
+        let agent = entry.agent(details: ["t4": detail("hc-get-t4")])
         #expect(agent.attention == .unknown && agent.since == nil)
         #expect([agent].grouped().map(\.attention) == [.unknown])
     }
@@ -119,7 +119,7 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
 
 @Suite struct Grouping {
     private func agent(_ address: String, _ space: String, _ attention: Attention) -> Agent {
-        Agent(address: address, space: space, machine: nil, task: "", attention: attention, since: .now)
+        Agent(address: address, space: space, machine: nil, task: "", attention: attention, since: .now, runningSubagentCount: nil)
     }
 
     @Test func groupsFollowAttentionOrderAndSkipEmptyOnes() {
@@ -143,7 +143,7 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
     @Test func agesRoundDownByUnit() {
         let now = Date(timeIntervalSince1970: 1_000_000)
         func age(_ seconds: Double) -> String {
-            Agent(address: "t", space: "", machine: nil, task: "", attention: .idle, since: now.addingTimeInterval(-seconds))
+            Agent(address: "t", space: "", machine: nil, task: "", attention: .idle, since: now.addingTimeInterval(-seconds), runningSubagentCount: nil)
                 .age(at: now)
         }
         #expect(age(30) == "<1m")
@@ -159,14 +159,14 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
     @Test func reportsOnlyAddressesWhoseAttentionChanged() {
         var tracker = AttentionTracker()
         let first = [
-            Agent(address: "t1", space: "a", machine: nil, task: "", attention: .working, since: .now),
-            Agent(address: "t2", space: "a", machine: nil, task: "", attention: .idle, since: .now),
+            Agent(address: "t1", space: "a", machine: nil, task: "", attention: .working, since: .now, runningSubagentCount: nil),
+            Agent(address: "t2", space: "a", machine: nil, task: "", attention: .idle, since: .now, runningSubagentCount: nil),
         ]
         #expect(tracker.record(first).isEmpty)
         let second = [
-            Agent(address: "t1", space: "a", machine: nil, task: "", attention: .done, since: .now),
-            Agent(address: "t2", space: "a", machine: nil, task: "", attention: .idle, since: .now),
-            Agent(address: "t3", space: "a", machine: nil, task: "", attention: .blocked, since: .now),
+            Agent(address: "t1", space: "a", machine: nil, task: "", attention: .done, since: .now, runningSubagentCount: nil),
+            Agent(address: "t2", space: "a", machine: nil, task: "", attention: .idle, since: .now, runningSubagentCount: nil),
+            Agent(address: "t3", space: "a", machine: nil, task: "", attention: .blocked, since: .now, runningSubagentCount: nil),
         ]
         #expect(tracker.record(second) == ["t1"])
         #expect(tracker.record(second).isEmpty)
@@ -211,8 +211,6 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
         #expect(agents[0].task == "DEPLOY: Approval needed before restarting the gateway")
         #expect(agents[1].task == "Untitled agent")
         #expect(agents[3].space == "web-app")
-        let fetched = runner.calls.filter { $0[1] == "get" }.map { $0[3] }
-        #expect(Set(fetched) == ["t4", "dev/t7", "t10", "t11"])
     }
 
     @Test func missingCLIIsUnavailable() async {
@@ -248,7 +246,6 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
         #expect(remote.allSatisfy { $0.task == "Task unavailable" && $0.since == nil && $0.age(at: .now) == "age unavailable" })
         #expect(remote.allSatisfy { $0.space == "web-app" })
         #expect(!runner.calls.contains { $0.dropFirst().elementsEqual(["ls", "--json"]) })
-        #expect(!runner.calls.contains { $0.contains("dev/t99") })
     }
 
     @Test func appStatusWinsOverStaleDetailWithoutInventingAge() async {
@@ -273,7 +270,7 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
 @Suite struct Badges {
     private func snapshot(_ attentions: [Attention]) -> Snapshot {
         .loaded(attentions.enumerated().map {
-            Agent(address: "t\($0.offset)", space: "", machine: nil, task: "", attention: $0.element, since: .now)
+            Agent(address: "t\($0.offset)", space: "", machine: nil, task: "", attention: $0.element, since: .now, runningSubagentCount: nil)
         })
     }
 
@@ -302,6 +299,162 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
         let now = Date(timeIntervalSince1970: 1_000_000)
         let mixed = try Fixture.load(root.appendingPathComponent("mixed.json"), now: now)
         #expect(mixed.first?.age(at: now) == "10m")
+        #expect(mixed.map(\.runningSubagentCount) == [2, 0, 4, nil, 0, 0])
         #expect(try Fixture.load(root.appendingPathComponent("empty.json"), now: now).isEmpty)
+    }
+}
+
+@Suite struct SubagentCounts {
+    private func data(_ value: String) -> Data { Data(value.utf8) }
+
+    private func runner(listing: Data, details: [String: String], coreAvailable: Bool = true) -> FakeRunner {
+        var responses = details.reduce(into: [String: Data]()) {
+            $0["get --json \($1.key)"] = data($1.value)
+        }
+        responses["ls"] = listing
+        var versions = [app: "herdr-app 0.1.13"]
+        if coreAvailable { versions[hc] = "hc 0.1.18" }
+        return FakeRunner(responses: responses, versions: versions)
+    }
+
+    private func listing(children: String = "[]") -> Data {
+        data(#"{"spaces":[{"id":"s","name":"space","tabs":[{"terminals":[{"terminal":"t1","status":"blocked","sub_agents":\#(children)}]}]}]}"#)
+    }
+
+    @Test func countsRecordsAndUniqueDirectChildrenWithoutChangingAttention() async {
+        let runner = runner(listing: fixture("herdr-app-subagents"), details: [
+            "t1": #"{"address":"t1","state":"live","status":{"state":"idle"},"records":{"build/test":{"state":"working"},"b":{"state":"working"},"c":{"state":"done"},"d":{"state":"idle"},"e":{"state":"blocked"},"f":{"state":"error"}}}"#,
+            "t2": #"{"address":"t2","state":"live","status":{"state":"done"}}"#,
+            "dev/t1": #"{"address":"dev/t1","state":"finished","records":{"stale":{"state":"working"}}}"#,
+            "t3": #"{"address":"t3","state":"live","status":{"state":"working"}}"#,
+            "t7": #"{"address":"t7","parent":"other-normalization","state":"live","status":{"state":"working"},"records":{"nested":{"state":"working"}}}"#,
+            "dev/t7": #"{"address":"dev/t7","state":"live","status":{"state":"done"}}"#,
+            "t8": #"{"address":"t8","state":"live","status":{"state":"idle"}}"#,
+            "t9": #"{"address":"t9","state":"live","status":{"state":"blocked"}}"#,
+            "t10": #"{"address":"t10","state":"live","status":null}"#,
+            "t11": #"{"address":"t11","state":"finished","status":{"state":"working"}}"#,
+        ])
+        let snapshot = await client(runner).snapshot()
+        let rows = Dictionary(uniqueKeysWithValues: snapshot.agents.map { ($0.address, $0) })
+        #expect(snapshot.failure == nil && rows.count == 5)
+        #expect(rows["t1"]?.attention == .idle && rows["t1"]?.runningSubagentCount == 3)
+        #expect(rows["t2"]?.attention == .done && rows["t2"]?.runningSubagentCount == 1)
+        #expect(rows["dev/t1"]?.attention == .blocked && rows["dev/t1"]?.runningSubagentCount == 1)
+        #expect(rows["t7"]?.runningSubagentCount == 1)
+        #expect(rows["t3"]?.runningSubagentCount == 0)
+        for address in ["t7", "dev/t7"] {
+            #expect(runner.calls.filter { $0 == [hc, "get", "--json", address] }.count == 1)
+        }
+    }
+
+    @Test(arguments: ["null", "{}", #"[{"terminal":"t7"}]"#, #"["t7",2]"#])
+    func malformedOptionalMembershipKeepsRow(_ children: String) async {
+        let runner = runner(listing: listing(children: children), details: [
+            "t1": #"{"address":"t1","state":"live"}"#,
+        ])
+        let snapshot = await client(runner).snapshot()
+        #expect(snapshot.failure == nil && snapshot.agents.count == 1)
+        #expect(snapshot.agents[0].attention == .blocked)
+        #expect(snapshot.agents[0].runningSubagentCount == nil)
+    }
+
+    @Test(arguments: [
+        #"{"address":"t7","state":"live","status":{"state":"future"}}"#,
+        #"{"address":"t7","state":"future","status":{"state":"working"}}"#,
+        #"{"address":"other/t7","state":"live","status":{"state":"working"}}"#,
+        "not JSON", "",
+    ])
+    func unavailableChildCannotProducePartialCount(_ child: String) async {
+        let runner = runner(listing: listing(children: #"["t7"]"#), details: [
+            "t1": #"{"address":"t1","state":"live","title":"Still visible","records":{"a":{"state":"working"}}}"#,
+            "t7": child,
+        ])
+        let snapshot = await client(runner).snapshot()
+        #expect(snapshot.failure == nil && snapshot.agents.count == 1)
+        #expect(snapshot.agents[0].task == "Still visible")
+        #expect(snapshot.agents[0].attention == .blocked)
+        #expect(snapshot.agents[0].runningSubagentCount == nil)
+    }
+
+    @Test(arguments: [
+        #"{"address":"t1","state":"future"}"#,
+        #"{"address":"t1","state":"live","records":{"a":{"state":"future"}}}"#,
+        #"{"address":"dev/t1","state":"live"}"#,
+        "not JSON", "",
+    ])
+    func unavailableParentPreservesInventory(_ parent: String) async {
+        let runner = runner(listing: listing(), details: ["t1": parent])
+        let snapshot = await client(runner).snapshot()
+        #expect(snapshot.failure == nil && snapshot.agents.count == 1)
+        #expect(snapshot.agents[0].attention == .blocked)
+        #expect(snapshot.agents[0].runningSubagentCount == nil)
+    }
+
+    @Test func missingParentChildAndCoreStayUnknown() async {
+        for runner in [
+            runner(listing: listing(), details: [:]),
+            runner(listing: listing(children: #"["t7"]"#), details: ["t1": #"{"address":"t1","state":"live"}"#]),
+            runner(listing: listing(), details: [:], coreAvailable: false),
+            runner(listing: fixture("herdr-app-remote-failure"), details: [:]),
+        ] {
+            let snapshot = await client(runner).snapshot()
+            #expect(snapshot.failure == nil && !snapshot.agents.isEmpty)
+            #expect(snapshot.agents.allSatisfy { $0.runningSubagentCount == nil })
+        }
+    }
+
+    @Test func finishedParentSuppressesStaleRecords() async {
+        let runner = runner(listing: listing(), details: [
+            "t1": #"{"address":"t1","state":"finished","records":{"stale":{"state":"future"}}}"#,
+        ])
+        let snapshot = await client(runner).snapshot()
+        #expect(snapshot.agents.first?.runningSubagentCount == 0)
+    }
+
+    @Test func missingMembershipIsUnknownAndMissingRecordsAreEmpty() async {
+        let runner = runner(listing: data(#"{"spaces":[{"id":"s","name":"space","tabs":[{"terminals":[{"terminal":"t1","status":"idle"},{"terminal":"t2","status":"working","sub_agents":[]}]}]}]}"#), details: [
+            "t1": #"{"address":"t1","state":"live"}"#,
+            "t2": #"{"address":"t2","state":"live","status":{"state":"working"}}"#,
+        ])
+        let snapshot = await client(runner).snapshot()
+        #expect(snapshot.agents.first { $0.address == "t1" }?.runningSubagentCount == nil)
+        #expect(snapshot.agents.first { $0.address == "t2" }?.runningSubagentCount == 0)
+    }
+
+    @Test func legacyFixtureAndAgentJSONDecodeWithoutCount() throws {
+        let legacy = data(#"{"agents":[{"address":"t1","space":"space","task":"task","attention":"idle","age_minutes":0}]}"#)
+        let fixture = try JSONDecoder().decode(Fixture.self, from: legacy)
+        #expect(fixture.agents(now: .now)[0].runningSubagentCount == nil)
+        let agent = try JSONDecoder().decode(Agent.self, from: data(#"{"address":"t1","space":"space","task":"task","attention":"idle"}"#))
+        #expect(agent.runningSubagentCount == nil)
+        let positive = Agent(address: "t1", space: "space", machine: nil, task: "task", attention: .idle, since: nil, runningSubagentCount: 2)
+        #expect(try JSONDecoder().decode(Agent.self, from: JSONEncoder().encode(positive)) == positive)
+    }
+
+    @Test func countOnlyUpdateDoesNotFlashOrChangeMenuBarTotals() {
+        let first = Agent(address: "t1", space: "space", machine: nil, task: "", attention: .idle, since: nil, runningSubagentCount: 0)
+        let second = Agent(address: "t1", space: "space", machine: nil, task: "", attention: .idle, since: nil, runningSubagentCount: 2)
+        var tracker = AttentionTracker()
+        #expect(tracker.record([first]).isEmpty)
+        #expect(tracker.record([second]).isEmpty)
+        #expect([first].counts == [second].counts)
+    }
+}
+
+@Suite struct RemoteSubagentIdentity {
+    @Test func remoteAndLocalChildrenKeepIndependentStates() async {
+        let listing = Data(#"{"spaces":[{"id":"s","name":"space","machine":"dev","tabs":[{"terminals":[{"terminal":"dev/t1","status":"done","sub_agents":["dev/t7","t7"]}]}]}]}"#.utf8)
+        let runner = FakeRunner(responses: [
+            "ls": listing,
+            "get --json dev/t1": Data(#"{"address":"dev/t1","state":"live","status":{"state":"done"}}"#.utf8),
+            "get --json dev/t7": Data(#"{"address":"dev/t7","parent":"t1","state":"live","status":{"state":"working"}}"#.utf8),
+            "get --json t7": Data(#"{"address":"t7","state":"live","status":{"state":"error"}}"#.utf8),
+        ], versions: [hc: "hc 0.1.18", app: "herdr-app 0.1.13"])
+        let snapshot = await client(runner).snapshot()
+        #expect(snapshot.agents.count == 1)
+        #expect(snapshot.agents[0].address == "dev/t1")
+        #expect(snapshot.agents[0].machine == "dev")
+        #expect(snapshot.agents[0].attention == .done)
+        #expect(snapshot.agents[0].runningSubagentCount == 1)
     }
 }
