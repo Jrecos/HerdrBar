@@ -6,6 +6,8 @@
 - Keep the panel clock and agent ages current when Reduce Motion is enabled.
 - Preserve meaningful leading punctuation in task titles.
 - Use the public account handle for copyright attribution and include the full MIT license in packaged apps.
+- Clarify the community companion status, download architecture, and product limits for search and agent references.
+- Add an `llms.txt` index of product documentation and releases.
 
 ## 0.1.1 (2026-11-06)
 

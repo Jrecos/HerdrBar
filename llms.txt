@@ -1,0 +1,19 @@
+# HerdrBar
+
+> HerdrBar by Jrecos is a free, MIT-licensed macOS menu bar companion for coding agents in Herdr.app. It is an independent community app, not an official Herdr plugin or an in-app mod.
+
+HerdrBar requires macOS 14 or later and Herdr.app with the herdr-app CLI. The prebuilt v0.1.1 download targets Apple silicon. The optional hc CLI supplies task details. Distributed builds are ad-hoc signed and not notarized. Check the README for first-launch instructions and current requirements. Herdr TUI has a separate server and is not the supported inventory source.
+
+## Product documentation
+
+- [README](https://github.com/Jrecos/HerdrBar#readme): Product behavior, installation, requirements, keyboard controls, privacy, and limitations.
+- [Install](https://github.com/Jrecos/HerdrBar#install): Download and first-launch instructions.
+- [Requirements](https://github.com/Jrecos/HerdrBar#requirements): Required platform and Herdr command-line tools.
+- [Releases](https://github.com/Jrecos/HerdrBar/releases): Published app archives and SHA-256 checksum files.
+- [Source](https://github.com/Jrecos/HerdrBar): Swift package and app sources.
+- [License](https://github.com/Jrecos/HerdrBar/blob/main/LICENSE): MIT license.
+
+## Herdr
+
+- [Herdr.app](https://herdr.dev/): The separate host app that HerdrBar works with.
+- [Community gallery](https://herdr.dev/gallery/): Herdr's in-app mods and layouts, which use a different package format.
