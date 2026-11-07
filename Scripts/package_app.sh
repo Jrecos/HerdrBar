@@ -32,6 +32,7 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE/Contents/MacOS" "$STAGE/Contents/Resources"
 cp "$BINARY" "$STAGE/Contents/MacOS/HerdrBar"
 chmod +x "$STAGE/Contents/MacOS/HerdrBar"
+cp "$ROOT/LICENSE" "$STAGE/Contents/Resources/LICENSE"
 if [[ "$CONF" == "release" ]]; then
   xcrun strip -x "$STAGE/Contents/MacOS/HerdrBar"
 fi
@@ -55,7 +56,7 @@ cat > "$STAGE/Contents/Info.plist" <<PLIST
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
     <key>CFBundleIconFile</key><string>Icon</string>
-    <key>NSHumanReadableCopyright</key><string>© 2026 Jrecos MIT License.</string>
+    <key>NSHumanReadableCopyright</key><string>© 2026 Jrecos. MIT License.</string>
     <key>HerdrBarGitCommit</key><string>${GIT_COMMIT}</string>
 </dict>
 </plist>

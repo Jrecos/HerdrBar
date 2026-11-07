@@ -91,7 +91,10 @@ public enum TaskTitle {
         if let first = title.first, first == ">" || first.isBrailleSpinner {
             title = title.dropFirst().drop(while: \.isWhitespace)
         }
-        title = title.drop { !$0.isLetter && !$0.isNumber && !$0.isWhitespace }.drop(while: \.isWhitespace)
+        if let scalar = title.first?.unicodeScalars.first,
+           scalar.properties.generalCategory == .otherSymbol || scalar.properties.generalCategory == .privateUse {
+            title = title.dropFirst().drop(while: \.isWhitespace)
+        }
         let collapsed = title.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         return collapsed.isEmpty ? "Untitled agent" : collapsed
     }
