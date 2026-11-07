@@ -26,7 +26,7 @@ extension Attention {
         case .blocked: Phosphor.blocked
         case .done: Phosphor.done
         case .working: Phosphor.working
-        case .idle: Phosphor.dim
+        case .idle, .unknown: Phosphor.dim
         }
     }
 }

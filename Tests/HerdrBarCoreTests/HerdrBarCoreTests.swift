@@ -41,14 +41,12 @@ private func client(_ runner: FakeRunner) -> HerdrClient {
     HerdrClient(runner: runner, discovery: CLIDiscovery(explicit: [.core: hc, .app: app], path: "", home: "/nonexistent"))
 }
 
-private func liveRunner(failures: [String: CommandFailure] = [:]) -> FakeRunner {
+private func liveRunner(failures: [String: CommandFailure] = [:], listing: String = "herdr-app-ls") -> FakeRunner {
     FakeRunner(
         responses: [
-            "ls --json": fixture("hc-ls"),
-            "ls": fixture("herdr-app-ls"),
+            "ls": fixture(listing),
             "get --json t4": fixture("hc-get-t4"),
             "get --json dev/t7": fixture("hc-get-dev-t7"),
-            "get --json t9": fixture("hc-get-t9"),
             "get --json t10": fixture("hc-get-t10"),
             "get --json t11": fixture("hc-get-t11"),
         ],
@@ -75,44 +73,42 @@ private func liveRunner(failures: [String: CommandFailure] = [:]) -> FakeRunner 
     }
 }
 
-@Suite struct AttentionRules {
+@Suite struct InventoryRules {
     private func detail(_ name: String) -> TerminalDetail {
         try! JSONDecoder().decode(TerminalDetail.self, from: fixture(name))
     }
 
-    @Test func workingStaysWorking() {
-        #expect(detail("hc-get-t4").attention == .working)
+    @Test func listingDeterminesAttentionAndSpace() {
+        let listing = try! JSONDecoder().decode(SpaceListing.self, from: fixture("herdr-app-ls"))
+        let entries = listing.inventory
+        #expect(Set(entries.map(\.address)) == ["t4", "t10", "t11", "dev/t7"])
+        let local = entries.first { $0.address == "t4" }!.agent(detail: detail("hc-get-t4"))!
+        let remote = entries.first { $0.address == "dev/t7" }!.agent(detail: detail("hc-get-dev-t7"))!
+        #expect(local.space == "api-server" && local.machine == nil && local.attention == .working)
+        #expect(local.since == Date(timeIntervalSince1970: 1_793_981_404.969))
+        #expect(remote.space == "web-app" && remote.machine == "dev" && remote.attention == .idle)
+        #expect(remote.since == nil)
+        #expect(entries.first { $0.address == "t10" }!.agent(detail: detail("hc-get-t10"))?.attention == .blocked)
+        let done = entries.first { $0.address == "t11" }!.agent(detail: detail("hc-get-t11"))!
+        #expect(done.attention == .done && done.since == nil)
     }
 
-    @Test func idleWithTurnAtSeenIsIdle() {
-        #expect(detail("hc-get-dev-t7").attention == .idle)
+    @Test func appListedTerminalSurvivesParentAndDeadDetail() {
+        let data = Data(#"{"spaces":[{"id":"s","name":"space","tabs":[{"terminals":[{"terminal":"t9","status":"working"}]}]}]}"#.utf8)
+        let entry = try! JSONDecoder().decode(SpaceListing.self, from: data).inventory[0]
+        let childDetail = detail("hc-get-t9")
+        #expect(entry.agent(detail: childDetail)?.address == "t9")
+        let dead = Data(#"{"address":"t9","parent":null,"state":"dead","status":{"state":"working"},"title":"Stopped","status_ms":1000}"#.utf8)
+        let deadDetail = try! JSONDecoder().decode(TerminalDetail.self, from: dead)
+        #expect(entry.agent(detail: deadDetail)?.task == "Stopped")
     }
 
-    @Test func doneWithUnseenTurnIsDone() {
-        #expect(detail("hc-get-t11").attention == .done)
-    }
-
-    @Test func errorMapsToBlocked() {
-        #expect(detail("hc-get-t10").attention == .blocked)
-    }
-
-    @Test func subAgentsAreSkipped() {
-        #expect(detail("hc-get-t9").agent(spaces: [:]) == nil)
-    }
-
-    @Test func remoteSpaceResolvesThroughMachineQualifiedID() {
-        let spaces = try! JSONDecoder().decode(SpaceListing.self, from: fixture("herdr-app-ls")).namesByID
-        let agent = detail("hc-get-dev-t7").agent(spaces: spaces)
-        #expect(agent?.space == "web-app")
-        #expect(agent?.machine == "dev")
-        let local = detail("hc-get-t4").agent(spaces: spaces)
-        #expect(local?.space == "api-server")
-        #expect(local?.machine == nil)
-        #expect(local?.since == Date(timeIntervalSince1970: 1_793_981_404.969))
-    }
-
-    @Test func unknownSpaceFallsBackToID() {
-        #expect(detail("hc-get-t4").agent(spaces: [:])?.space == "spAPI")
+    @Test func unknownStatusRemainsVisibleWithoutInventingAge() {
+        let data = Data(#"{"spaces":[{"id":"s","name":"space","tabs":[{"terminals":[{"terminal":"t4","status":"future"}]}]}]}"#.utf8)
+        let entry = try! JSONDecoder().decode(SpaceListing.self, from: data).inventory[0]
+        let agent = entry.agent(detail: detail("hc-get-t4"))!
+        #expect(agent.attention == .unknown && agent.since == nil)
+        #expect([agent].grouped().map(\.attention) == [.unknown])
     }
 }
 
@@ -211,25 +207,52 @@ private func liveRunner(failures: [String: CommandFailure] = [:]) -> FakeRunner 
         #expect(agents[1].task == "Untitled agent")
         #expect(agents[3].space == "web-app")
         let fetched = runner.calls.filter { $0[1] == "get" }.map { $0[3] }
-        #expect(Set(fetched) == ["t4", "dev/t7", "t9", "t10", "t11"])
+        #expect(Set(fetched) == ["t4", "dev/t7", "t10", "t11"])
     }
 
     @Test func missingCLIIsUnavailable() async {
         let runner = FakeRunner(versions: [:])
         let snapshot = await client(runner).snapshot()
-        #expect(snapshot.failure?.hasPrefix("hc: not found") == true)
+        #expect(snapshot.failure?.hasPrefix("herdr-app: not found") == true)
     }
 
     @Test func wrongVersionBannerIsRejected() async {
-        let runner = FakeRunner(versions: [hc: "herdr-app 0.1.13", app: "herdr-app 0.1.13"])
+        let runner = FakeRunner(responses: ["ls": fixture("herdr-app-ls")], versions: [hc: "herdr-app 0.1.13", app: "herdr-app 0.1.13"])
         let snapshot = await client(runner).snapshot()
-        #expect(snapshot.failure?.hasPrefix("hc: not found") == true)
+        #expect(snapshot.failure == nil)
+        #expect(snapshot.agents.allSatisfy { $0.task == "Task unavailable" && $0.since == nil })
     }
 
     @Test func failingCommandReportsItsStderr() async {
-        let runner = liveRunner(failures: ["ls --json": CommandFailure(command: "hc ls --json", reason: "core is not running")])
+        let runner = liveRunner(failures: ["ls": CommandFailure(command: "herdr-app ls", reason: "app is not running")])
         let snapshot = await client(runner).snapshot()
-        #expect(snapshot == .unavailable("hc ls --json: core is not running"))
+        #expect(snapshot == .unavailable("herdr-app ls: app is not running"))
+    }
+
+    @Test func appInventorySurvivesMissingCoreMachineAndFailedDetails() async {
+        let runner = liveRunner(failures: [
+            "ls --json": CommandFailure(command: "hc ls --json", reason: "remote machine omitted"),
+            "get --json dev/t7": CommandFailure(command: "hc get", reason: "registry writer stopped"),
+            "get --json dev/t12": CommandFailure(command: "hc get", reason: "registry writer stopped"),
+        ], listing: "herdr-app-remote-failure")
+        let snapshot = await client(runner).snapshot()
+        let remote = snapshot.agents.filter { $0.machine == "dev" }
+        #expect(Set(remote.map(\.address)) == ["dev/t7", "dev/t12"])
+        #expect(remote.first { $0.address == "dev/t7" }?.attention == .idle)
+        #expect(remote.first { $0.address == "dev/t12" }?.attention == .working)
+        #expect(remote.allSatisfy { $0.task == "Task unavailable" && $0.since == nil && $0.age(at: .now) == "age unavailable" })
+        #expect(remote.allSatisfy { $0.space == "web-app" })
+        #expect(!runner.calls.contains { $0.dropFirst().elementsEqual(["ls", "--json"]) })
+        #expect(!runner.calls.contains { $0.contains("dev/t99") })
+    }
+
+    @Test func appStatusWinsOverStaleDetailWithoutInventingAge() async {
+        let listing = Data(#"{"spaces":[{"id":"s","name":"space","machine":null,"tabs":[{"terminals":[{"terminal":"t4","status":"idle"}]}]}]}"#.utf8)
+        let runner = FakeRunner(responses: ["ls": listing, "get --json t4": fixture("hc-get-t4")],
+                                versions: [hc: "hc 0.1.18", app: "herdr-app 0.1.13"])
+        let agent = await client(runner).snapshot().agents.first
+        #expect(agent?.attention == .idle)
+        #expect(agent?.since == nil)
     }
 
     @Test func focusSendsTheHerdrCommand() async throws {
@@ -273,8 +296,6 @@ private func liveRunner(failures: [String: CommandFailure] = [:]) -> FakeRunner 
             .deletingLastPathComponent().appendingPathComponent("docs/fixtures")
         let now = Date(timeIntervalSince1970: 1_000_000)
         let mixed = try Fixture.load(root.appendingPathComponent("mixed.json"), now: now)
-        #expect(Set(mixed.map(\.attention)) == Set(Attention.allCases))
-        #expect(mixed.contains { $0.machine != nil })
         #expect(mixed.first?.age(at: now) == "10m")
         #expect(try Fixture.load(root.appendingPathComponent("empty.json"), now: now).isEmpty)
     }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (2026-11-06)
+
+- Use Herdr.app's inventory so agents remain visible when core omits a remote machine; retain listed status when terminal details fail.
+
 ## 0.1.0 (2026-11-06)
 
 - Show working, blocked, newly done, and unavailable states in the menu bar.

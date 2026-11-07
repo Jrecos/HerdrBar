@@ -2,7 +2,7 @@ import Foundation
 
 /// Declaration order is the display order.
 public enum Attention: String, CaseIterable, Codable, Sendable {
-    case blocked, done, working, idle
+    case blocked, done, working, idle, unknown
 
     public var groupLabel: String {
         self == .working ? "running" : rawValue
@@ -14,6 +14,7 @@ public enum Attention: String, CaseIterable, Codable, Sendable {
         case .done: "[ok]"
         case .working: "[⠋]"
         case .idle: "[--]"
+        case .unknown: "[?]"
         }
     }
 }
@@ -24,11 +25,11 @@ public struct Agent: Identifiable, Sendable, Codable, Equatable {
     public let machine: String?
     public let task: String
     public let attention: Attention
-    public let since: Date
+    public let since: Date?
 
     public var id: String { address }
 
-    public init(address: String, space: String, machine: String?, task: String, attention: Attention, since: Date) {
+    public init(address: String, space: String, machine: String?, task: String, attention: Attention, since: Date?) {
         self.address = address
         self.space = space
         self.machine = machine
@@ -38,6 +39,7 @@ public struct Agent: Identifiable, Sendable, Codable, Equatable {
     }
 
     public func age(at now: Date) -> String {
+        guard let since else { return "age unavailable" }
         let minutes = max(0, Int(now.timeIntervalSince(since) / 60))
         if minutes < 1 { return "<1m" }
         if minutes < 60 { return "\(minutes)m" }
@@ -104,6 +106,7 @@ extension Array where Element == Agent {
             case .done: counts.done += 1
             case .working: counts.working += 1
             case .idle: counts.idle += 1
+            case .unknown: break
             }
         }
     }

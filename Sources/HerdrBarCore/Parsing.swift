@@ -1,19 +1,5 @@
 import Foundation
 
-/// `hc ls --json`
-public struct TerminalListing: Decodable, Sendable {
-    public struct Entry: Decodable, Sendable {
-        public let address: String
-        public let status: String?
-    }
-
-    public let terminals: [Entry]
-
-    /// Only terminals whose program reports a status are agents.
-    public var agentAddresses: [String] {
-        terminals.filter { $0.status != nil }.map(\.address)
-    }
-}
 
 /// `hc get --json <address>`
 public struct TerminalDetail: Decodable, Sendable {
@@ -41,13 +27,60 @@ public struct SpaceListing: Decodable, Sendable {
     public struct Space: Decodable, Sendable {
         public let id: String
         public let name: String
+        public let tabs: [Tab]
+        public let machine: String?
+    }
+
+    public struct Tab: Decodable, Sendable {
+        public let terminals: [Terminal]
+    }
+
+    public struct Terminal: Decodable, Sendable {
+        public let terminal: String
+        public let status: String?
+    }
+
+    public struct InventoryEntry: Sendable {
+        public let address: String
+        public let space: String
+        public let machine: String?
+        public let status: String
+
+        public var attention: Attention {
+            switch status {
+            case "working": .working
+            case "blocked", "error": .blocked
+            case "done": .done
+            case "idle": .idle
+            default: .unknown
+            }
+        }
+
+        public func agent(detail: TerminalDetail?) -> Agent? {
+            let detailStatus = detail?.status?.state
+            let sameStatus = (status == "working" && detailStatus == "working")
+                || (["blocked", "error"].contains(status) && detailStatus.map { ["blocked", "error"].contains($0) } == true)
+            return Agent(address: address, space: space, machine: machine,
+                         task: detail.map { TaskTitle.clean($0.title) } ?? "Task unavailable",
+                         attention: attention,
+                         since: sameStatus ? detail?.statusMs.map { Date(timeIntervalSince1970: $0 / 1000) } : nil)
+        }
+    }
+
+    public var inventory: [InventoryEntry] {
+        spaces.flatMap { space in
+            space.tabs.flatMap { tab in
+                tab.terminals.compactMap { terminal in
+                    terminal.status.map {
+                        InventoryEntry(address: terminal.terminal, space: space.name, machine: space.machine, status: $0)
+                    }
+                }
+            }
+        }
     }
 
     public let spaces: [Space]
 
-    public var namesByID: [String: String] {
-        Dictionary(spaces.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
-    }
 }
 
 public enum TaskTitle {
@@ -68,41 +101,5 @@ extension Character {
     var isBrailleSpinner: Bool {
         guard let scalar = unicodeScalars.first, unicodeScalars.count == 1 else { return false }
         return (0x2800...0x28FF).contains(scalar.value)
-    }
-}
-
-extension TerminalDetail {
-    /// Core keeps `done` after the user looked; Herdr derives attention from `turn` vs `herdr.seen`.
-    public var attention: Attention? {
-        guard let raw = status?.state else { return nil }
-        let labels = labels ?? [:]
-        switch raw {
-        case "working": return .working
-        case "blocked", "error": return .blocked
-        case "idle", "done":
-            let seen = Int(labels["herdr.seen"] ?? "") ?? 0
-            return (turn ?? 0) > seen ? .done : .idle
-        default: return nil
-        }
-    }
-
-    public var machine: String? {
-        guard let slash = address.firstIndex(of: "/") else { return nil }
-        return String(address[..<slash])
-    }
-
-    /// `nil` for sub-agents, dead terminals, and terminals without an agent status.
-    public func agent(spaces: [String: String]) -> Agent? {
-        guard parent == nil, state == "live", let attention else { return nil }
-        let spaceID = labels?["herdr.space"] ?? ""
-        let qualified = machine.map { "\($0)/\(spaceID)" } ?? spaceID
-        let space = spaces[qualified] ?? (spaceID.isEmpty ? "Unassigned" : spaceID)
-        return Agent(
-            address: address,
-            space: space,
-            machine: machine,
-            task: TaskTitle.clean(title),
-            attention: attention,
-            since: Date(timeIntervalSince1970: (statusMs ?? 0) / 1000))
     }
 }

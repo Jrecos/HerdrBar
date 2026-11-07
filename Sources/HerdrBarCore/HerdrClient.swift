@@ -48,20 +48,24 @@ public struct HerdrClient: Sendable {
     }
 
     public func agents() async throws -> [Agent] {
-        let core = try await locate(.core)
+        let core = try? await locate(.core)
         let app = try await locate(.app)
         let decoder = JSONDecoder()
-        let listing = try decoder.decode(TerminalListing.self, from: try await runner.run(core, ["ls", "--json"]))
-        let spaces = try decoder.decode(SpaceListing.self, from: try await runner.run(app, ["ls"])).namesByID
-        return try await withThrowingTaskGroup(of: Agent?.self) { group in
-            for address in listing.agentAddresses {
+        let listing = try decoder.decode(SpaceListing.self, from: try await runner.run(app, ["ls"]))
+        return await withTaskGroup(of: Agent?.self) { group in
+            for entry in listing.inventory {
                 group.addTask {
-                    let data = try await runner.run(core, ["get", "--json", address])
-                    return try decoder.decode(TerminalDetail.self, from: data).agent(spaces: spaces)
+                    let detail: TerminalDetail?
+                    if let core, let data = try? await runner.run(core, ["get", "--json", entry.address]) {
+                        detail = try? JSONDecoder().decode(TerminalDetail.self, from: data)
+                    } else {
+                        detail = nil
+                    }
+                    return entry.agent(detail: detail)
                 }
             }
             var agents: [Agent] = []
-            for try await agent in group {
+            for await agent in group {
                 if let agent { agents.append(agent) }
             }
             return agents
