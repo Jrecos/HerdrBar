@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Show per-session Herdr-reported working subagent counts from in-process status records and direct child terminals. Hide known zero and show unavailable counts explicitly. Do not include nested helpers or unreported OMP tasks.
 - Bound CLI execution on timeout and cancellation, including commands that ignore termination or leave output pipes open.
 - Keep the panel clock and agent ages current when Reduce Motion is enabled.
 - Preserve meaningful leading punctuation in task titles.
