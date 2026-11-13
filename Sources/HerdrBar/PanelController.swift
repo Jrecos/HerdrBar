@@ -58,6 +58,7 @@ final class PanelController {
     func open(under button: NSStatusBarButton) {
         selection.selected = nil
         selection.hovered = nil
+        selection.armed = nil
         store.panelOpen = true
         render()
         position(under: button)
@@ -108,7 +109,7 @@ final class PanelController {
 
     /// Grows downward from the menu bar so the top edge stays anchored.
     private func fit() {
-        let height = Layout.height(for: store.snapshot)
+        let height = Layout.height(for: store.snapshot, actionFailed: store.focusFailure != nil || store.closeFailure != nil)
         var frame = panel.frame
         guard frame.height != height else { return }
         frame.origin.y += frame.height - height
@@ -120,6 +121,8 @@ final class PanelController {
         await withCheckedContinuation { continuation in
             withObservationTracking {
                 _ = store.snapshot
+                _ = store.focusFailure
+                _ = store.closeFailure
             } onChange: {
                 continuation.resume()
             }
@@ -131,7 +134,7 @@ final class PanelController {
     private func position(under button: NSStatusBarButton) {
         guard let buttonWindow = button.window, let screen = buttonWindow.screen ?? NSScreen.main else { return }
         let anchor = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
-        let height = Layout.height(for: store.snapshot)
+        let height = Layout.height(for: store.snapshot, actionFailed: store.focusFailure != nil || store.closeFailure != nil)
         var x = anchor.midX - Layout.width / 2
         x = min(max(x, screen.visibleFrame.minX + 8), screen.visibleFrame.maxX - Layout.width - 8)
         let y = anchor.minY - height - 6
@@ -144,7 +147,12 @@ final class PanelController {
         case 125: selection.move(1, in: store.agents.ordered())
         case 36, 76:
             if let agent = store.agents.first(where: { $0.id == selection.selected }) { activate(agent) }
-        case 53: close()
+        case 51, 117:
+            if let agent = store.agents.first(where: { $0.id == selection.selected }) {
+                selection.requestClose(agent, close: store.close)
+            }
+        case 53:
+            if selection.armed != nil { selection.armed = nil } else { close() }
         default: return false
         }
         return true

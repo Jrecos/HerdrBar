@@ -3,8 +3,23 @@ import SwiftUI
 
 @MainActor @Observable
 final class PanelSelection {
-    var selected: String?
-    var hovered: String?
+    var selected: String? {
+        didSet { if selected != oldValue { armed = nil } }
+    }
+    var hovered: String? {
+        didSet { if let hovered, hovered != armed { armed = nil } }
+    }
+    var armed: String?
+
+    func requestClose(_ agent: Agent, close: (Agent) -> Void) {
+        if armed == agent.id {
+            armed = nil
+            close(agent)
+        } else {
+            selected = agent.id
+            armed = agent.id
+        }
+    }
 
     func move(_ step: Int, in agents: [Agent]) {
         guard !agents.isEmpty else { return }
@@ -27,7 +42,7 @@ enum Layout {
     static let row: CGFloat = 36
     static let message: CGFloat = 48
 
-    static func height(for snapshot: Snapshot) -> CGFloat {
+    static func height(for snapshot: Snapshot, actionFailed: Bool = false) -> CGFloat {
         let groups = snapshot.agents.grouped()
         var list: CGFloat = listPadding * 2
         if groups.isEmpty || snapshot.failure != nil {
@@ -36,6 +51,7 @@ enum Layout {
         for (index, group) in groups.enumerated() {
             list += groupHeader + row * CGFloat(group.agents.count) + (index > 0 ? groupGap : 0)
         }
+        if actionFailed && !groups.isEmpty && snapshot.failure == nil { list += message }
         return min(maxHeight, header + 1 + list + 1 + footer)
     }
 }
@@ -77,11 +93,14 @@ struct PanelView: View {
         }
         .font(Mono.font(12))
         .foregroundStyle(Phosphor.fg)
-        .frame(width: Layout.width, height: Layout.height(for: snapshot))
+        .frame(width: Layout.width, height: Layout.height(for: snapshot, actionFailed: store.focusFailure != nil || store.closeFailure != nil))
         .background(Phosphor.panel)
         .overlay(Scanlines().opacity(0.05))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Phosphor.border, lineWidth: 1))
+        .onChange(of: snapshot.agents.map(\.id)) { _, ids in
+            if let armed = selection.armed, !ids.contains(armed) { selection.armed = nil }
+        }
     }
 
     private func header(at date: Date) -> some View {
@@ -134,11 +153,19 @@ struct PanelView: View {
                             agent: agent,
                             index: ordered.firstIndex(of: agent) ?? 0,
                             highlighted: selection.selected == agent.id || selection.hovered == agent.id,
+                            armed: selection.armed == agent.id,
                             changed: changed.contains(agent.id),
                             motion: motion,
                             date: date,
                             action: { open(agent) },
-                            hover: { selection.hovered = $0 ? agent.id : nil })
+                            close: { selection.requestClose(agent, close: store.close) },
+                            hover: { inside in
+                                if inside {
+                                    selection.hovered = agent.id
+                                } else if selection.hovered == agent.id {
+                                    selection.hovered = nil
+                                }
+                            })
                             .id(agent.id)
                     }
                 }
@@ -147,6 +174,8 @@ struct PanelView: View {
                 message(":: herdr unavailable", failure, color: Phosphor.blocked)
             } else if let focusFailure {
                 message(":: focus failed", focusFailure, color: Phosphor.blocked)
+            } else if let closeFailure = store.closeFailure {
+                message(":: close failed", closeFailure, color: Phosphor.blocked)
             } else if groups.isEmpty {
                 message(":: idle", "no agents. the watch is quiet.", color: Phosphor.dim)
             }
@@ -167,7 +196,7 @@ struct PanelView: View {
 
     private var footer: some View {
         HStack(spacing: 14) {
-            Text("↵ open · ↑↓ move · esc close").foregroundStyle(Phosphor.dim)
+            Text("↵ open · ⌫ kill · ↑↓ move · esc close").foregroundStyle(Phosphor.dim)
             Spacer()
             FooterButton("open herdr ↗", action: openHerdr)
             FooterButton("quit", action: quit)
@@ -201,55 +230,76 @@ private struct AgentRow: View {
     let agent: Agent
     let index: Int
     let highlighted: Bool
+    let armed: Bool
     let changed: Bool
     let motion: Bool
     let date: Date
     let action: () -> Void
+    let close: () -> Void
     let hover: (Bool) -> Void
 
     @State private var appeared = false
     @State private var flash = false
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 8) {
-                    Text(highlighted ? "▸" : "$")
-                        .foregroundStyle(highlighted ? agent.attention.color : Phosphor.dim)
-                        .frame(width: 10)
-                    Text(agent.space).fontWeight(.bold).lineLimit(1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    if let machine = agent.machine {
-                        Text("@\(machine)").font(Mono.font(11)).foregroundStyle(Phosphor.teal)
+        HStack(spacing: 0) {
+            Button(action: action) {
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 8) {
+                        Text(highlighted ? "▸" : "$")
+                            .foregroundStyle(highlighted ? agent.attention.color : Phosphor.dim)
+                            .frame(width: 10)
+                        Text(agent.space).fontWeight(.bold).lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if let machine = agent.machine {
+                            Text("@\(machine)").font(Mono.font(11)).foregroundStyle(Phosphor.teal)
+                        }
+                        Text(agent.age(at: date)).font(Mono.font(11)).foregroundStyle(Phosphor.dim)
+                        Group {
+                            if armed {
+                                Text("[kill?]").foregroundStyle(Phosphor.blocked)
+                            } else {
+                                AttentionTag(attention: agent.attention, motion: motion)
+                            }
+                        }
+                        .frame(width: 52, alignment: .trailing)
                     }
-                    Text(agent.age(at: date)).font(Mono.font(11)).foregroundStyle(Phosphor.dim)
-                    AttentionTag(attention: agent.attention, motion: motion)
-                        .frame(width: 36, alignment: .trailing)
+                    HStack(spacing: 0) {
+                        Text("└─ ").foregroundStyle(Phosphor.dim)
+                        Text(agent.task).foregroundStyle(Phosphor.muted).lineLimit(1).truncationMode(.tail)
+                    }
+                    .font(Mono.font(10.5))
+                    .padding(.leading, 18)
                 }
-                HStack(spacing: 0) {
-                    Text("└─ ").foregroundStyle(Phosphor.dim)
-                    Text(agent.task).foregroundStyle(Phosphor.muted).lineLimit(1).truncationMode(.tail)
-                }
-                .font(Mono.font(10.5))
-                .padding(.leading, 18)
+                .padding(.leading, 10)
+                .frame(height: Layout.row)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 10)
-            .frame(height: Layout.row)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(flash ? agent.attention.color.opacity(0.18) : highlighted ? Phosphor.selected : .clear))
-            .overlay(alignment: .leading) {
-                if flash {
-                    RoundedRectangle(cornerRadius: 1).fill(agent.attention.color).frame(width: 2).padding(.vertical, 6)
-                }
+            .buttonStyle(.plain)
+            .help(agent.task)
+            .accessibilityIdentifier(agent.address)
+            .accessibilityLabel("\(agent.space)\(agent.machine.map { " on \($0)" } ?? ""), \(agent.attention.groupLabel), \(agent.task)")
+            Button(action: close) {
+                Text("✕")
+                    .foregroundStyle(armed ? Phosphor.blocked : Phosphor.muted)
+                    .frame(width: 28, height: Layout.row)
+                    .contentShape(Rectangle())
             }
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .opacity(highlighted ? 1 : 0)
+            .allowsHitTesting(highlighted)
+            .accessibilityLabel("Close \(agent.space)")
+            .accessibilityIdentifier("close:" + agent.address)
         }
-        .buttonStyle(.plain)
-        .help(agent.task)
-        .accessibilityIdentifier(agent.address)
-        .accessibilityLabel("\(agent.space)\(agent.machine.map { " on \($0)" } ?? ""), \(agent.attention.groupLabel), \(agent.task)")
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(flash ? agent.attention.color.opacity(0.18) : highlighted ? Phosphor.selected : .clear))
+        .overlay(alignment: .leading) {
+            if flash {
+                RoundedRectangle(cornerRadius: 1).fill(agent.attention.color).frame(width: 2).padding(.vertical, 6)
+            }
+        }
         .onHover(perform: hover)
         .animation(motion ? .easeOut(duration: 0.12) : nil, value: highlighted)
         .opacity(!motion || appeared ? 1 : 0)
