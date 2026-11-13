@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Close an agent's session from the panel. A row's ✕ or ⌫ asks once, then closes its pane, or its space when it is the last terminal there.
 - Bound CLI execution on timeout and cancellation, including commands that ignore termination or leave output pipes open.
 - Keep the panel clock and agent ages current when Reduce Motion is enabled.
 - Preserve meaningful leading punctuation in task titles.
