@@ -37,6 +37,7 @@ public struct SpaceListing: Decodable, Sendable {
 
     public struct Terminal: Decodable, Sendable {
         public let terminal: String
+        public let pane: String
         public let status: String?
     }
 
@@ -45,6 +46,7 @@ public struct SpaceListing: Decodable, Sendable {
         public let space: String
         public let machine: String?
         public let status: String
+        public let closeTarget: CloseTarget
 
         public var attention: Attention {
             switch status {
@@ -63,16 +65,19 @@ public struct SpaceListing: Decodable, Sendable {
             return Agent(address: address, space: space, machine: machine,
                          task: detail.map { TaskTitle.clean($0.title) } ?? "Task unavailable",
                          attention: attention,
-                         since: sameStatus ? detail?.statusMs.map { Date(timeIntervalSince1970: $0 / 1000) } : nil)
+                         since: sameStatus ? detail?.statusMs.map { Date(timeIntervalSince1970: $0 / 1000) } : nil,
+                         closeTarget: closeTarget)
         }
     }
 
     public var inventory: [InventoryEntry] {
         spaces.flatMap { space in
-            space.tabs.flatMap { tab in
+            let terminalCount = space.tabs.reduce(0) { $0 + $1.terminals.count }
+            return space.tabs.flatMap { tab in
                 tab.terminals.compactMap { terminal in
                     terminal.status.map {
-                        InventoryEntry(address: terminal.terminal, space: space.name, machine: space.machine, status: $0)
+                        InventoryEntry(address: terminal.terminal, space: space.name, machine: space.machine, status: $0,
+                                       closeTarget: terminalCount == 1 ? .space(space.id) : .pane(terminal.pane))
                     }
                 }
             }

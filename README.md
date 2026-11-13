@@ -2,7 +2,7 @@
 
 HerdrBar by [Jrecos](https://github.com/Jrecos) is a free, open-source macOS menu bar app for monitoring coding agents in [Herdr.app](https://herdr.dev). See which agents are blocked, working, or newly finished, then open an agent in Herdr with a click.
 
-HerdrBar is an independent community companion, not an official Herdr plugin. It runs as a separate app and uses Herdr's command-line tools. It does not install a mod or change Herdr's layouts.
+HerdrBar is an independent community companion, not an official Herdr plugin. It runs as a separate app and uses Herdr's command-line tools. It does not install a mod.
 
 [Download HerdrBar](https://github.com/Jrecos/HerdrBar/releases/latest) · [Installation](#install) · [Requirements](#requirements) · [Agent reference](llms.txt)
 
@@ -67,15 +67,18 @@ With the panel open:
 | --- | --- |
 | ↑ / ↓ | Move the selection |
 | ↵ | Open the selected agent in Herdr |
-| esc | Close the panel |
+| ⌫ / forward delete | Arm closing the selected session, then press again to confirm |
+| esc | Cancel an armed close, or close the panel |
 
 Clicking outside the panel also closes it.
+
+Hover over or select a row to reveal its ✕ button. Click it once to show `[kill?]`, then again to close the session. Closing ends the terminal. If it is the space's last terminal, closing also removes the space. Moving the selection, hovering another row, or pressing esc cancels confirmation. Return still opens the agent.
 
 ## How it works
 
 This section describes the current source. The v0.1.1 download predates the subprocess timeout fixes listed under [Unreleased](CHANGELOG.md#unreleased).
 
-HerdrBar runs Herdr's own CLIs. Listing and detail requests query Herdr, though core may persist registry state while serving them; focusing an agent changes Herdr's selection.
+HerdrBar runs Herdr's own CLIs. Listing and detail requests query Herdr, though core may persist registry state while serving them. Focusing an agent changes Herdr's selection. A confirmed close ends the selected terminal and removes its pane, or its space when it has no other terminals.
 
 | Command | Purpose |
 | --- | --- |
@@ -83,6 +86,8 @@ HerdrBar runs Herdr's own CLIs. Listing and detail requests query Herdr, though 
 | `hc get --json <address>` | Enriches a terminal with its title and status time when available |
 | `hc --version`, `herdr-app --version` | Confirms a candidate binary before each refresh; `hc` is optional for detail enrichment |
 | `herdr-app do agent.focus '{"terminal":"<address>"}'` | Open the agent you clicked (after activating Herdr.app) |
+| `herdr-app do pane.close '{"pane":"<pane>"}'` | Close a confirmed session when its space has other terminals |
+| `herdr-app do space.close '{"id":"<space>","confirmed":true}'` | Close a confirmed session when it is the space's last terminal |
 
 It refreshes every 5 seconds, or every 2 seconds while the panel is open. Each call runs off the main thread with a 3 second timeout. Timeout and cancellation send `SIGKILL` to the command's process group, close its output pipes, and return without waiting for process exit.
 

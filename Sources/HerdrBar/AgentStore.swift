@@ -8,6 +8,7 @@ final class AgentStore {
     private(set) var snapshot: Snapshot = .loaded([])
     private(set) var changed: Set<String> = []
     private(set) var focusFailure: String?
+    private(set) var closeFailure: String?
     var panelOpen = false {
         didSet { if panelOpen != oldValue { refreshNow() } }
     }
@@ -71,6 +72,7 @@ final class AgentStore {
     }
 
     func focus(_ agent: Agent) {
+        closeFailure = nil
         focusFailure = nil
         Task {
             do {
@@ -81,6 +83,19 @@ final class AgentStore {
             } catch {
                 focusFailure = "\(error)"
             }
+        }
+    }
+
+    func close(_ agent: Agent) {
+        focusFailure = nil
+        closeFailure = nil
+        Task {
+            do {
+                try await client.close(agent.closeTarget)
+            } catch {
+                closeFailure = "\(error)"
+            }
+            refreshNow()
         }
     }
 }

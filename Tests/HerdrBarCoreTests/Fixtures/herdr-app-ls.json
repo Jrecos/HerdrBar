@@ -3,16 +3,29 @@
     {
       "id": "spAPI", "name": "api-server", "machine": null,
       "tabs": [{"terminals": [
-        {"terminal": "t4", "status": "working", "sub_agents": [{"terminal": "t9", "status": "working"}]},
-        {"terminal": "t10", "status": "error"},
-        {"terminal": "t11", "status": "done"}
+        {"terminal": "t4", "pane": "p4", "status": "working", "sub_agents": [{"terminal": "t9", "status": "working"}]},
+        {"terminal": "t10", "pane": "p10", "status": "error"},
+        {"terminal": "t11", "pane": "p11", "status": "done"}
       ]}]
     },
     {
       "id": "dev/spWEB", "name": "web-app", "machine": "dev",
       "tabs": [{"terminals": [
-        {"terminal": "dev/t6", "status": null},
-        {"terminal": "dev/t7", "status": "idle", "sub_agents": [{"terminal": "dev/t99", "status": "working"}]}
+        {"terminal": "dev/t6", "pane": "dev/p6", "status": null}
+      ]}, {"terminals": [
+        {"terminal": "dev/t7", "pane": "dev/p7", "status": "idle", "sub_agents": [{"terminal": "dev/t99", "status": "working"}]}
+      ]}]
+    },
+    {
+      "id": "spSOLO", "name": "solo", "machine": null,
+      "tabs": [{"terminals": [
+        {"terminal": "t20", "pane": "p20", "status": "idle", "sub_agents": [{"terminal": "t21", "status": "working"}]}
+      ]}]
+    },
+    {
+      "id": "dev/spSOLO", "name": "solo-remote", "machine": "dev",
+      "tabs": [{"terminals": [
+        {"terminal": "dev/t20", "pane": "dev/p20", "status": "idle"}
       ]}]
     }
   ]
