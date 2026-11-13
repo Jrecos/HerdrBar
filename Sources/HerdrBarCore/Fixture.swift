@@ -26,7 +26,8 @@ public struct Fixture: Decodable, Sendable {
         agents.map {
             Agent(
                 address: $0.address, space: $0.space, machine: $0.machine, task: $0.task,
-                attention: $0.attention, since: now.addingTimeInterval(-$0.ageMinutes * 60))
+                attention: $0.attention, since: now.addingTimeInterval(-$0.ageMinutes * 60),
+                closeTarget: .space($0.address))
         }
     }
 }

@@ -80,4 +80,25 @@ public struct HerdrClient: Sendable {
         let payload = try encoder.encode(["terminal": address])
         _ = try await runner.run(app, ["do", "agent.focus", String(decoding: payload, as: UTF8.self)])
     }
+
+    public func close(_ target: CloseTarget) async throws {
+        struct SpaceClose: Encodable {
+            let id: String
+            let confirmed = true
+        }
+        let app = try await locate(.app)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.withoutEscapingSlashes, .sortedKeys]
+        let command: String
+        let payload: Data
+        switch target {
+        case .pane(let pane):
+            command = "pane.close"
+            payload = try encoder.encode(["pane": pane])
+        case .space(let id):
+            command = "space.close"
+            payload = try encoder.encode(SpaceClose(id: id))
+        }
+        _ = try await runner.run(app, ["do", command, String(decoding: payload, as: UTF8.self)])
+    }
 }

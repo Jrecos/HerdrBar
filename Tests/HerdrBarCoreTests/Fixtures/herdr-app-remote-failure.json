@@ -2,14 +2,14 @@
   "spaces": [
     {
       "id": "spAPI", "name": "api-server", "machine": null,
-      "tabs": [{"terminals": [{"terminal": "t4", "status": "working"}]}]
+      "tabs": [{"terminals": [{"terminal": "t4", "pane": "p4", "status": "working"}]}]
     },
     {
       "id": "dev/spWEB", "name": "web-app", "machine": "dev",
       "tabs": [{"terminals": [
-        {"terminal": "dev/t7", "status": "idle", "sub_agents": [{"terminal": "dev/t99", "status": "working"}]},
-        {"terminal": "dev/t12", "status": "working"},
-        {"terminal": "dev/t6", "status": null}
+        {"terminal": "dev/t7", "pane": "dev/p7", "status": "idle", "sub_agents": [{"terminal": "dev/t99", "status": "working"}]},
+        {"terminal": "dev/t12", "pane": "dev/p12", "status": "working"},
+        {"terminal": "dev/t6", "pane": "dev/p6", "status": null}
       ]}]
     }
   ]

@@ -86,7 +86,7 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
     @Test func listingDeterminesAttentionAndSpace() {
         let listing = try! JSONDecoder().decode(SpaceListing.self, from: fixture("herdr-app-ls"))
         let entries = listing.inventory
-        #expect(Set(entries.map(\.address)) == ["t4", "t10", "t11", "dev/t7"])
+        #expect(Set(entries.map(\.address)) == ["t4", "t10", "t11", "dev/t7", "t20", "dev/t20"])
         let local = entries.first { $0.address == "t4" }!.agent(detail: detail("hc-get-t4"))!
         let remote = entries.first { $0.address == "dev/t7" }!.agent(detail: detail("hc-get-dev-t7"))!
         #expect(local.space == "api-server" && local.machine == nil && local.attention == .working)
@@ -96,10 +96,16 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
         #expect(entries.first { $0.address == "t10" }!.agent(detail: detail("hc-get-t10"))?.attention == .blocked)
         let done = entries.first { $0.address == "t11" }!.agent(detail: detail("hc-get-t11"))!
         #expect(done.attention == .done && done.since == nil)
+        #expect(local.closeTarget == .pane("p4"))
+        #expect(remote.closeTarget == .pane("dev/p7"))
+        #expect(done.closeTarget == .pane("p11"))
+        #expect(entries.first { $0.address == "t10" }?.closeTarget == .pane("p10"))
+        #expect(entries.first { $0.address == "t20" }?.agent(detail: nil)?.closeTarget == .space("spSOLO"))
+        #expect(entries.first { $0.address == "dev/t20" }?.agent(detail: nil)?.closeTarget == .space("dev/spSOLO"))
     }
 
     @Test func appListedTerminalSurvivesParentAndDeadDetail() {
-        let data = Data(#"{"spaces":[{"id":"s","name":"space","tabs":[{"terminals":[{"terminal":"t9","status":"working"}]}]}]}"#.utf8)
+        let data = Data(#"{"spaces":[{"id":"s","name":"space","tabs":[{"terminals":[{"terminal":"t9","pane":"p9","status":"working"}]}]}]}"#.utf8)
         let entry = try! JSONDecoder().decode(SpaceListing.self, from: data).inventory[0]
         let childDetail = detail("hc-get-t9")
         #expect(entry.agent(detail: childDetail)?.address == "t9")
@@ -109,7 +115,7 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
     }
 
     @Test func unknownStatusRemainsVisibleWithoutInventingAge() {
-        let data = Data(#"{"spaces":[{"id":"s","name":"space","tabs":[{"terminals":[{"terminal":"t4","status":"future"}]}]}]}"#.utf8)
+        let data = Data(#"{"spaces":[{"id":"s","name":"space","tabs":[{"terminals":[{"terminal":"t4","pane":"p4","status":"future"}]}]}]}"#.utf8)
         let entry = try! JSONDecoder().decode(SpaceListing.self, from: data).inventory[0]
         let agent = entry.agent(detail: detail("hc-get-t4"))!
         #expect(agent.attention == .unknown && agent.since == nil)
@@ -119,7 +125,7 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
 
 @Suite struct Grouping {
     private func agent(_ address: String, _ space: String, _ attention: Attention) -> Agent {
-        Agent(address: address, space: space, machine: nil, task: "", attention: attention, since: .now)
+        Agent(address: address, space: space, machine: nil, task: "", attention: attention, since: .now, closeTarget: .space(address))
     }
 
     @Test func groupsFollowAttentionOrderAndSkipEmptyOnes() {
@@ -143,7 +149,7 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
     @Test func agesRoundDownByUnit() {
         let now = Date(timeIntervalSince1970: 1_000_000)
         func age(_ seconds: Double) -> String {
-            Agent(address: "t", space: "", machine: nil, task: "", attention: .idle, since: now.addingTimeInterval(-seconds))
+            Agent(address: "t", space: "", machine: nil, task: "", attention: .idle, since: now.addingTimeInterval(-seconds), closeTarget: .space("s"))
                 .age(at: now)
         }
         #expect(age(30) == "<1m")
@@ -159,14 +165,14 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
     @Test func reportsOnlyAddressesWhoseAttentionChanged() {
         var tracker = AttentionTracker()
         let first = [
-            Agent(address: "t1", space: "a", machine: nil, task: "", attention: .working, since: .now),
-            Agent(address: "t2", space: "a", machine: nil, task: "", attention: .idle, since: .now),
+            Agent(address: "t1", space: "a", machine: nil, task: "", attention: .working, since: .now, closeTarget: .space("s1")),
+            Agent(address: "t2", space: "a", machine: nil, task: "", attention: .idle, since: .now, closeTarget: .space("s2")),
         ]
         #expect(tracker.record(first).isEmpty)
         let second = [
-            Agent(address: "t1", space: "a", machine: nil, task: "", attention: .done, since: .now),
-            Agent(address: "t2", space: "a", machine: nil, task: "", attention: .idle, since: .now),
-            Agent(address: "t3", space: "a", machine: nil, task: "", attention: .blocked, since: .now),
+            Agent(address: "t1", space: "a", machine: nil, task: "", attention: .done, since: .now, closeTarget: .space("s1")),
+            Agent(address: "t2", space: "a", machine: nil, task: "", attention: .idle, since: .now, closeTarget: .space("s2")),
+            Agent(address: "t3", space: "a", machine: nil, task: "", attention: .blocked, since: .now, closeTarget: .space("s3")),
         ]
         #expect(tracker.record(second) == ["t1"])
         #expect(tracker.record(second).isEmpty)
@@ -206,13 +212,13 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
         let runner = liveRunner()
         let snapshot = await client(runner).snapshot()
         let agents = snapshot.agents.ordered()
-        #expect(agents.map(\.address) == ["t10", "t11", "t4", "dev/t7"])
-        #expect(agents.map(\.attention) == [.blocked, .done, .working, .idle])
+        #expect(agents.map(\.address) == ["t10", "t11", "t4", "t20", "dev/t20", "dev/t7"])
+        #expect(agents.map(\.attention) == [.blocked, .done, .working, .idle, .idle, .idle])
         #expect(agents[0].task == "DEPLOY: Approval needed before restarting the gateway")
         #expect(agents[1].task == "Untitled agent")
-        #expect(agents[3].space == "web-app")
+        #expect(agents[5].space == "web-app")
         let fetched = runner.calls.filter { $0[1] == "get" }.map { $0[3] }
-        #expect(Set(fetched) == ["t4", "dev/t7", "t10", "t11"])
+        #expect(Set(fetched) == ["t4", "dev/t7", "t10", "t11", "t20", "dev/t20"])
     }
 
     @Test func missingCLIIsUnavailable() async {
@@ -252,7 +258,7 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
     }
 
     @Test func appStatusWinsOverStaleDetailWithoutInventingAge() async {
-        let listing = Data(#"{"spaces":[{"id":"s","name":"space","machine":null,"tabs":[{"terminals":[{"terminal":"t4","status":"idle"}]}]}]}"#.utf8)
+        let listing = Data(#"{"spaces":[{"id":"s","name":"space","machine":null,"tabs":[{"terminals":[{"terminal":"t4","pane":"p4","status":"idle"}]}]}]}"#.utf8)
         let runner = FakeRunner(responses: ["ls": listing, "get --json t4": fixture("hc-get-t4")],
                                 versions: [hc: "hc 0.1.18", app: "herdr-app 0.1.13"])
         let agent = await client(runner).snapshot().agents.first
@@ -268,12 +274,28 @@ private func liveRunner(failures: [String: CommandFailure] = [:], listing: Strin
         try await client(runnerWithFocus).focus("dev/t7")
         #expect(runnerWithFocus.calls.last == [app, "do", "agent.focus", "{\"terminal\":\"dev/t7\"}"])
     }
+
+    @Test func closePaneSendsRemotePaneID() async throws {
+        let payload = #"{"pane":"dev/p7"}"#
+        let runner = FakeRunner(responses: ["do pane.close \(payload)": Data()],
+                                versions: [app: "herdr-app 0.1.15"])
+        try await client(runner).close(.pane("dev/p7"))
+        #expect(runner.calls == [[app, "--version"], [app, "do", "pane.close", payload]])
+    }
+
+    @Test func closeSpaceConfirmsRemoteSpaceID() async throws {
+        let payload = #"{"confirmed":true,"id":"dev/spSOLO"}"#
+        let runner = FakeRunner(responses: ["do space.close \(payload)": Data()],
+                                versions: [app: "herdr-app 0.1.15"])
+        try await client(runner).close(.space("dev/spSOLO"))
+        #expect(runner.calls == [[app, "--version"], [app, "do", "space.close", payload]])
+    }
 }
 
 @Suite struct Badges {
     private func snapshot(_ attentions: [Attention]) -> Snapshot {
         .loaded(attentions.enumerated().map {
-            Agent(address: "t\($0.offset)", space: "", machine: nil, task: "", attention: $0.element, since: .now)
+            Agent(address: "t\($0.offset)", space: "", machine: nil, task: "", attention: $0.element, since: .now, closeTarget: .space("s"))
         })
     }
 

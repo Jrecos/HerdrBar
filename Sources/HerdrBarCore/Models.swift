@@ -19,6 +19,11 @@ public enum Attention: String, CaseIterable, Codable, Sendable {
     }
 }
 
+public enum CloseTarget: Sendable, Codable, Equatable {
+    case pane(String)
+    case space(String)
+}
+
 public struct Agent: Identifiable, Sendable, Codable, Equatable {
     public let address: String
     public let space: String
@@ -26,16 +31,18 @@ public struct Agent: Identifiable, Sendable, Codable, Equatable {
     public let task: String
     public let attention: Attention
     public let since: Date?
+    public let closeTarget: CloseTarget
 
     public var id: String { address }
 
-    public init(address: String, space: String, machine: String?, task: String, attention: Attention, since: Date?) {
+    public init(address: String, space: String, machine: String?, task: String, attention: Attention, since: Date?, closeTarget: CloseTarget) {
         self.address = address
         self.space = space
         self.machine = machine
         self.task = task
         self.attention = attention
         self.since = since
+        self.closeTarget = closeTarget
     }
 
     public func age(at now: Date) -> String {
